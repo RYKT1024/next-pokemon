@@ -15,9 +15,9 @@ export default async function PokemonInfo({id} : {id:string}) {
     return (
       <>
         <div className='pt-12 flex flex-col items-center'>
-            <div className=' w-72 h-full rounded-3xl shadow-lg bg-white flex flex-col items-center'>
-                <div className='h-80 mt-2 flex flex-col items-center text-center'>
-                  <h1 className='h-16 z-10'>{pokemon.name}</h1> 
+            <div className=' w-80 h-full rounded-3xl shadow-xl bg-white flex flex-col items-center'>
+                <div className='h-80 mt-2 mb-4 flex flex-col items-center text-center'>
+                  <p className='h-16 z-10 text-3xl font-bold text-gray-800'>{pokemon.name}</p> 
                   <img    className='w-64 h-64'
                           src={pokemon.sprites.front_default} alt={pokemon.name} />
                 </div>
