@@ -1,25 +1,22 @@
-import axios from 'axios'
 import PokemonButton from './changePokemon';
 import SelectPokemon from './selectPokemon';
+import { getPokemonImg, getPokemonName } from '../lib/action';
 
 export default async function PokemonInfo({id} : {id:string}) {
-  interface PokemonData {
-    name: string;
-    sprites: {
-        front_default: string;
-    }
-  }
-  const res = await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}`);
-  const pokemon = res.data;
 
+  const [img, name] = await Promise.all([
+    getPokemonImg(id),
+    getPokemonName(id)
+  ]);
     return (
       <>
         <div className='pt-12 flex flex-col items-center'>
             <div className=' w-80 h-full rounded-3xl shadow-xl bg-white flex flex-col items-center'>
-                <div className='h-80 mt-2 mb-4 flex flex-col items-center text-center'>
-                  <p className='h-16 z-10 text-3xl font-bold text-gray-800'>{pokemon.name}</p> 
+                <div className='h-80 mt-6 mb-4 flex flex-col items-center text-center'>
+                  <p className='h-16 mt-4 z-10 text-3xl font-bold text-gray-800'>{name}</p> 
                   <img    className='w-64 h-64'
-                          src={pokemon.sprites.front_default} alt={pokemon.name} />
+                          src={img} 
+                          alt={name} />
                 </div>
             </div>
             <div className='flex pt-4'>
