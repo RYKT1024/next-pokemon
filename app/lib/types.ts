@@ -5,3 +5,8 @@ export interface TrainerInfo {
     name: string | undefined;
   }>
 }
+
+export interface TrainerInfoHash {
+  name: string;
+  pokemonsKey: string; 
+}

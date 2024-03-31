@@ -5,26 +5,29 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from 'redis'
 
-import { TrainerInfo } from './types'
+import { TrainerInfo, TrainerInfoHash } from './types'
  
-export async function revalidatePokemon(id: number) {
-  let path = '/pokemon/'+id.toString()
+const client = createClient()
+client.connect()
+
+export async function revalidatePokemon(pokemonId: number) {
+  let path = '/pokemon/'+pokemonId.toString()
   revalidatePath(path)
   redirect(path)
 }
 
-export async function selectPokemon(id: string) {
-  redirect(`/pokemon/${id}`)
+export async function selectPokemonPage(pokemonId: string) {
+  redirect(`/pokemon/${pokemonId}`)
 }
 
-export async function getPokemonImg(id: string) {
-  const res = await axios.get(`https://pokeapi.co/api/v2/pokemon/${id}/`)
+export async function getPokemonImg(pokemonId: string) {
+  const res = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonId}/`)
   const pokemon = res.data;
   const pokemonImg = pokemon.sprites.front_default;
   return pokemonImg;
 }
 
-export async function getPokemonName(id: string) {
+export async function getPokemonName(pokemonId: string) {
   interface PokemonName {
     language: {
       name: string;
@@ -34,27 +37,20 @@ export async function getPokemonName(id: string) {
   interface PokemonSpecies {
     names: Array<PokemonName>;
   }
-  const res = await axios.get(`https://pokeapi.co/api/v2/pokemon-species/${id}/`)
+  const res = await axios.get(`https://pokeapi.co/api/v2/pokemon-species/${pokemonId}/`)
   const pokemonSpecies: PokemonSpecies = res.data;
   const pokemonNames = pokemonSpecies.names;
   const pokemonName = pokemonNames.find((name: { language: { name: string; }; }) => name.language.name === 'zh-Hans')?.name;
   return pokemonName;
 }
 
-const client = createClient()
-client.connect()
-
 export async function getTrainerInfo(uid: string) {
-  interface TrainerInfoHash {
-    name: string;
-    pokemonsKey: string; 
-  }
   const info_hash = await client.hGetAll(uid).then(info => {
     return info as unknown as TrainerInfoHash
   });
   const pokemonsId = await client.LRANGE(info_hash.pokemonsKey, 0, -1);
   const pokemonsName = await Promise.all(pokemonsId.map(string=>getPokemonName(string)))
-  const pokemons = pokemonsName.map((name, index) => {
+  const pokemons = pokemonsName.map((name, _) => {
     return {
       name: name
     }
@@ -65,4 +61,11 @@ export async function getTrainerInfo(uid: string) {
     pokemons,
   }
   return info_obj;
+}
+
+export async function addPokemon(uid: string, pokemonId: string) {
+  const info_hash = await client.hGetAll(uid).then(info => {
+    return info as unknown as TrainerInfoHash
+  });
+  client.RPUSH(info_hash.pokemonsKey, pokemonId)
 }
