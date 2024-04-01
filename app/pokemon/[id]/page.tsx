@@ -3,7 +3,7 @@ import PokemonInfo from "@/app/ui/pokemonInfo";
 import Pokebag from "@/app/ui/pokebag/pokebag";
 
 export function generateStaticParams() {
-  return Array.from({ length: 100 }, (_, index) => ({
+  return Array.from({ length: 1025 }, (_, index) => ({
     id: `${1 + index}`
   }));
 }

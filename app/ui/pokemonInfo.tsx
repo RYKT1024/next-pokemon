@@ -2,6 +2,8 @@ import PokemonButton from './changePokemon';
 import SelectPokemon from './selectPokemon';
 import { getPokemonImg, getPokemonName } from '../lib/action';
 
+import Image from 'next/image';
+
 export default async function PokemonInfo({id} : {id:string}) {
 
   const [img, name] = await Promise.all([
@@ -14,7 +16,9 @@ export default async function PokemonInfo({id} : {id:string}) {
             <div className=' w-80 h-full rounded-3xl shadow-xl bg-white flex flex-col items-center'>
                 <div className='h-80 mt-6 mb-4 flex flex-col items-center text-center'>
                   <p className='h-16 mt-4 z-10 text-3xl font-bold text-gray-800'>{name}</p> 
-                  <img    className='w-64 h-64'
+                  <Image  className='w-64 h-64'
+                          width={256}
+                          height={256}
                           src={img} 
                           alt={name} />
                 </div>
