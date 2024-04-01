@@ -1,6 +1,6 @@
 'use client'
 
-import PokebagButton from "./pokebagButton";
+import ImgButton from "../imgButton";
 import PokebagWindow from "./pokebagWindow";
 import PokebagContent from "./pokebagContent";
 import { useState, useEffect } from "react";
@@ -27,7 +27,8 @@ export default function Pokebag() {
 
   return (
     <div>
-      <PokebagButton onClick={toggleWindow} />
+      <ImgButton src='/pokebag.png' alt='打开宝可梦背包' onClick={toggleWindow}
+                 className="fixed top-5 right-5" buttonClassName="w-14 h-14"/>
       <PokebagWindow isVisible={isWindowVisible} onClose={toggleWindow}>
         <PokebagContent />
       </PokebagWindow>

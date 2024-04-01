@@ -1,7 +1,7 @@
 'use client';
 import { revalidatePokemon } from "../lib/action";
 
-export default function Revalidate({numStr}: {numStr: string}) {
+export default function revalidateButton({numStr}: {numStr: string}) {
   
   const handleClick = () => {
     const num = Number(numStr);
@@ -12,7 +12,7 @@ export default function Revalidate({numStr}: {numStr: string}) {
     <div>
       <button 
         onClick={handleClick}       
-        className="ml-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        className="bg-blue-600 hover:bg-blue-700 hover:text-gray-100 text-white font-bold py-1 px-3 rounded"
       >
         重新验证
       </button>

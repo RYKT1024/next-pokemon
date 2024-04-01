@@ -21,7 +21,7 @@ export default async function PokemonInfo({id} : {id:string}) {
             </div>
             <div className='flex pt-4'>
               <PokemonButton id={(Number(id)-1).toString()}>&lt;</PokemonButton>
-              <SelectPokemon id={id} />
+              <SelectPokemon id={id} className='mx-2'/>
               <PokemonButton id={(Number(id)+1).toString()}>&gt;</PokemonButton>
             </div>
         </div>
