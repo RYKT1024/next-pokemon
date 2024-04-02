@@ -1,7 +1,9 @@
 'use client';
 import { revalidatePokemon } from "../lib/action";
 
-export default function revalidateButton({numStr}: {numStr: string}) {
+export default function revalidateButton({numStr}: {
+  numStr: string
+}) {
   
   const handleClick = () => {
     const num = Number(numStr);

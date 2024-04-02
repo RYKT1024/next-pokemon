@@ -2,13 +2,11 @@
 
 import { useRef, useEffect } from 'react';
 
-interface PopupWindowProps {
+export default function PokebagWindow({ isVisible, onClose, children }:{
   isVisible: boolean; // 控制弹窗显示的状态
   onClose: () => void; // 关闭弹窗的方法
   children: React.ReactNode; // 弹窗内部的内容
-}
-
-export default function PokebagWindow({ isVisible, onClose, children }: PopupWindowProps){
+}){
   const ref = useRef<HTMLDivElement>(null); // 指向这个弹窗组件
 
   useEffect(() => {

@@ -5,24 +5,25 @@ import { redirect } from 'next/navigation'
 import { createClient } from 'redis'
 
 import { TrainerInfo, TrainerInfoHash } from './types'
-import { getPokemonImgApi, getPokemonSpeciesApi } from './api'
+import { getPokemonImgApi, getPokemonSpeciesApi, getPokemonAllImgApi } from './api'
+import exp from 'constants'
  
 const client = createClient()
 client.connect()
 
-export async function revalidatePokemon(pokemonId: number) {
-  let path = '/pokemon/'+pokemonId.toString()
+export async function revalidatePokemon(pid: number) {
+  let path = '/pokemon/'+pid.toString()
   revalidatePath(path)
   redirect(path)
 }
 
-export async function selectPokemonPage(pokemonId: string) {
-  redirect(`/pokemon/${pokemonId}`)
+export async function selectPokemonPage(pid: string) {
+  redirect(`/pokemon/${pid}`)
 }
 
-export async function getPokemonImg(pokemonId: string) {
+export async function getPokemonImg(pid: string) {
   try {
-    const res = await getPokemonImgApi(pokemonId);
+    const res = await getPokemonImgApi(pid);
     const pokemon = res.data;
     const pokemonImg = pokemon.sprites.front_default;
     return pokemonImg;
@@ -30,11 +31,11 @@ export async function getPokemonImg(pokemonId: string) {
   catch (error) {
     // 处理错误
     // console.error(error);
-    return 'unknown';
+    return '/retry.svg';
   }
 }
 
-export async function getPokemonName(pokemonId: string) {
+export async function getPokemonName(pid: string) {
   interface PokemonName {
     language: {
       name: string;
@@ -45,7 +46,7 @@ export async function getPokemonName(pokemonId: string) {
     names: Array<PokemonName>;
   }
   try {
-    const res = await getPokemonSpeciesApi(pokemonId);
+    const res = await getPokemonSpeciesApi(pid);
     const pokemonSpecies: PokemonSpecies = res.data;
     const pokemonNames = pokemonSpecies.names;
     const pokemonName = pokemonNames.find((name: { language: { name: string; }; }) => name.language.name === 'zh-Hans')?.name;
@@ -91,15 +92,24 @@ export async function getTrainerInfo(uid: string) {
   }
 }
 
-export async function addPokemon(uid: string, pokemonId: string) {
+export async function addPokemon(uid: string, pid: string) {
   try {
     const info_hash = await client.hGetAll(uid).then(info => {
       return info as unknown as TrainerInfoHash
     });
-    client.RPUSH(info_hash.pokemonsKey, pokemonId)
+    client.RPUSH(info_hash.pokemonsKey, pid)
   }
   catch (error) {
     // 处理错误
     // console.error(error);
   }
+}
+
+export async function getPokemonAllImg(pid: string) {
+  const frontSprites = getPokemonAllImgApi(pid).then(frontSprites => {return frontSprites;});
+  return frontSprites;
+}
+
+export async function checkFounded() {
+  return Math.random() >= 0.5 // 随机布尔值
 }

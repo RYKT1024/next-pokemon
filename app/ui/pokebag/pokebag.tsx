@@ -1,6 +1,6 @@
 'use client'
 
-import ImgButton from "../imgButton";
+import ImgButton from "../common/imgButton";
 import PokebagWindow from "./pokebagWindow";
 import PokebagContent from "./pokebagContent";
 import { useState, useEffect, useCallback } from "react";
