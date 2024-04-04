@@ -22,7 +22,8 @@ export default function PokemonUI({img, name, className}: {
         <p className='h-16 mt-4 z-10 text-3xl font-bold text-gray-800'>{name}</p> 
         <Image  className='w-64 h-64'
                 width={256} height={256}
-                src={img} alt={name} />
+                src={img} alt={name} 
+                draggable='false' />
       </>
     )
   }

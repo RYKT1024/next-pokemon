@@ -2,6 +2,7 @@
 
 import { selectPokemonPage } from "../lib/action";
 import Image from "next/image";
+import { useEffect } from "react";
 
 export default function GrassButton({className}: {
   className?: string
@@ -9,6 +10,23 @@ export default function GrassButton({className}: {
   const randomRedirect = () => {
     selectPokemonPage((Math.floor(Math.random() * 1025) + 1).toString());
   }
+
+  // 处理键盘按键事件
+  const handleKeyPress = (event: KeyboardEvent) => {
+    if(event.code === 'KeyQ') {
+      randomRedirect()
+    }
+  };
+
+  useEffect(() => {
+    // 添加键盘事件监听器
+    window.addEventListener('keydown', handleKeyPress);
+
+    // 组件卸载时移除事件监听器
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [])
 
   return (
     <div className={`flex items-center cursor-pointer ${className}`} onClick={randomRedirect}>

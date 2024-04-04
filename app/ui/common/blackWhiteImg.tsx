@@ -15,5 +15,6 @@ export default function BlackWhiteImg({ src, className, width, height, alt }: {
   return <Image 
               src={src} className={className} 
               width={width} height={height}
-              style={style} alt="Visual binary effect" />;
+              style={style} alt="Visual binary effect" 
+              draggable='false' />;
 }

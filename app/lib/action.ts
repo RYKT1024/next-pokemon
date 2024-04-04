@@ -5,9 +5,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from 'redis'
 
 import { TrainerInfo, TrainerInfoHash } from './types'
-import { getPokemonImgApi, getPokemonSpeciesApi, getPokemonAllImgApi } from './api'
-import exp from 'constants'
- 
+import { getPokemonImgApi, getPokemonSpeciesApi, getPokemonAllImgApi } from './api' 
+import { fetchNow } from './db'
+
 const client = createClient()
 client.connect()
 
@@ -64,6 +64,7 @@ export async function getPokemonName(pid: string) {
 
 export async function getTrainerInfo(uid: string) {
   try {
+    fetchNow();
     const info_hash = await client.hGetAll(uid).then(info => {
       return info as unknown as TrainerInfoHash
     });

@@ -15,7 +15,8 @@ export default function ImgButton({ src, alt, width, height, className, buttonCl
     <button onClick={onClick} className={className}>
       <Image src={src} alt={src} 
              width={width} height={height}
-             className={buttonClassName}/>
+             className={buttonClassName}
+             draggable='false'/>
     </button>
   );
 }
