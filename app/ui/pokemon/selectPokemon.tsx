@@ -12,6 +12,7 @@ export default function selectPokemon({id, className, sKey}: {
   // 处理键盘按键事件
   const handleKeyPress = (event: KeyboardEvent) => {
     if(sKey && event.code === sKey) {
+      event.preventDefault();
       onClickHandler()
     }
   };

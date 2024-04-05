@@ -280,7 +280,53 @@ CREATE TABLE PokemonAbilityLink (
 
 CREATE INDEX idx_pokemonabilitylink_pid ON PokemonAbilityLink(pid);
 
+CREATE TABLE PokemonItemPocket (
+    ipid        SERIAL PRIMARY KEY,
+    UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP   
+);
 
+CREATE TABLE PokemonItemPocketDetail (
+    ipdid       SERIAL PRIMARY KEY,
+    ipid        INTEGER NOT NULL REFERENCES PokemonItemPocket(ipid),
+    language    VARCHAR(10) NOT NULL REFERENCES Languages(name),
+    name        VARCHAR(50) NOT NULL,
+
+    UNIQUE(ipid, language)
+);
+
+CREATE INDEX idx_pokemonitempocketdetail_ipid_language ON PokemonItemPocketDetail(ipid, language);
+
+CREATE TABLE PokemonItem (
+    iid         SERIAL PRIMARY KEY,
+    ipid        INTEGER NOT NULL REFERENCES PokemonItemPocket(ipid),
+    cost        INTEGER NOT NULL,
+    url         VARCHAR(256)
+);
+
+CREATE INDEX idx_pokemonitem_ipid ON PokemonItem(ipid);
+
+CREATE TABLE PokemonItemDetail (
+    idid        SERIAL PRIMARY KEY,
+    iid         INTEGER NOT NULL REFERENCES PokemonItem(iid),
+    language    VARCHAR(10) NOT NULL REFERENCES Languages(name),
+    name        VARCHAR(50) NOT NULL,
+    description VARCHAR(256),
+
+    UNIQUE(iid, language)
+);
+
+CREATE INDEX idx_pokemonitemdetail_iid_language ON PokemonItemDetail(iid, language);
+
+CREATE TABLE PokemonItemLink (
+    ilid        SERIAL PRIMARY KEY,
+    pid         INTEGER NOT NULL REFERENCES Pokemon(pid),
+    iid         INTEGER NOT NULL REFERENCES PokemonItem(iid),
+
+    UNIQUE(pid, iid)
+);
+
+CREATE INDEX idx_pokemonitemlink_pid ON PokemonItemLink(pid);
+CREATE INDEX idx_pokemonitemlink_iid ON PokemonItemLink(iid);
 
 
 CREATE TABLE Trainers (

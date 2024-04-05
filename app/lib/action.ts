@@ -5,8 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from 'redis'
 
 import { TrainerInfo, TrainerInfoHash } from './types'
-import { getPokemonImgApi, getPokemonSpeciesApi, getPokemonAllImgApi } from './api' 
-import { fetchNow } from './db'
+import { getPokemonApi, getPokemonSpeciesApi  } from './api' 
 
 const client = createClient()
 client.connect()
@@ -23,7 +22,7 @@ export async function selectPokemonPage(pid: string) {
 
 export async function getPokemonImg(pid: string) {
   try {
-    const res = await getPokemonImgApi(pid);
+    const res = await getPokemonApi(pid);
     const pokemon = res.data;
     const pokemonImg = pokemon.sprites.front_default;
     return pokemonImg;
@@ -64,7 +63,6 @@ export async function getPokemonName(pid: string) {
 
 export async function getTrainerInfo(uid: string) {
   try {
-    fetchNow();
     const info_hash = await client.hGetAll(uid).then(info => {
       return info as unknown as TrainerInfoHash
     });
@@ -106,11 +104,11 @@ export async function addPokemon(uid: string, pid: string) {
   }
 }
 
-export async function getPokemonAllImg(pid: string) {
-  const frontSprites = getPokemonAllImgApi(pid).then(frontSprites => {return frontSprites;});
-  return frontSprites;
-}
+// export async function getPokemonAllImg(pid: string) {
+//   const frontSprites = getPokemonAllImgApi(pid).then(frontSprites => {return frontSprites;});
+//   return frontSprites;
+// }
 
 export async function checkFounded() {
-  return Math.random() >= 0.5 // 随机布尔值
+  // return Math.random() >= 0.5 // 随机布尔值
 }

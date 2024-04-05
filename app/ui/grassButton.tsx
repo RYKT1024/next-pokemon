@@ -11,9 +11,12 @@ export default function GrassButton({className}: {
     selectPokemonPage((Math.floor(Math.random() * 1025) + 1).toString());
   }
 
+  const sKey = 'KeyQ'
+
   // 处理键盘按键事件
   const handleKeyPress = (event: KeyboardEvent) => {
-    if(event.code === 'KeyQ') {
+    if(sKey !== undefined && event.code === sKey) {
+      event.preventDefault();
       randomRedirect()
     }
   };

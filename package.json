@@ -6,7 +6,9 @@
     "dev": "next dev",
     "start": "next start -p $PORT",
     "build": "next build && PORT=3000 npm start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "pg:build": "node scripts/pg_build.mjs",
+    "pg:update": "node scripts/pg_update.mjs"
   },
   "dependencies": {
     "axios": "^1.6.8",

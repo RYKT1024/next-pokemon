@@ -6,11 +6,14 @@ import { Pool } from 'pg'
 
 dotenv.config()
 
-const dbUser = process.env.PGD_USER;
-const dbPass = process.env.PGD_PASS;
-const dbHost = process.env.PGD_HOST;
-const dbPort = process.env.PGD_PORT;
-const dbName = process.env.PGD_NAME;
+const { 
+  PGD_USER: dbUser, 
+  PGD_PASS: dbPass, 
+  PGD_HOST: dbHost, 
+  PGD_PORT: dbPort, 
+  PGD_NAME: dbName 
+} = process.env;
+
 
 // Redis 客户端
 // const client = createClient({
@@ -35,4 +38,3 @@ export async function fetchNow() {
     console.error(err);
   }
 }
-
