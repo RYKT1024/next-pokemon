@@ -17,7 +17,7 @@ async function main() {
 
   try {
     // 读取 SQL 文件
-    const sqlFilePath = '.pg.tables.sql';
+    const sqlFilePath = '.pg.build.sql';
     const sqlQuery = fs.readFileSync(sqlFilePath, { encoding: 'utf-8' });
     // 执行 SQL 文件中的查询
     await pool.query(sqlQuery);
