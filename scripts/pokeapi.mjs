@@ -4,8 +4,8 @@ function getPokemonApi(pokemonId) {
   return axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
 }
 
-function getPokemonSpeciesApi(pokemonId) {
-  return axios.get(`https://pokeapi.co/api/v2/pokemon-species/${pokemonId}/`)
+function getPokemonSpecieApi(specieId) {
+  return axios.get(`https://pokeapi.co/api/v2/pokemon-species/${specieId}/`)
 }
 
 function getPokemonTypeApi(typeId) {
@@ -18,6 +18,10 @@ function getPokemonAbilityApi(abilityId) {
 
 function getPokemonEvolutionChainApi(ecId) {
   return axios.get(`https://pokeapi.co/api/v2/evolution-chain/${ecId}`);
+}
+
+function getPokemonVersionGroupApi(vgId) {
+  return axios.get(`https://pokeapi.co/api/v2/version-group/${vgId}`);
 }
 
 function getPokemonVersionApi(versionId) {
@@ -40,8 +44,8 @@ function getPokemonItemPocketApi(ipId) {
   return axios.get(`https://pokeapi.co/api/v2/item-pocket/${ipId}`);
 }
 
-function getPokemonGenerationsApi() {
-  return axios.get(`https://pokeapi.co/api/v2/generation/`);
+function getPokemonGenerationApi(gId) {
+  return axios.get(`https://pokeapi.co/api/v2/generation/${gId}`);
 }
 
 function getPokemonLanguagesApi() {
@@ -54,16 +58,17 @@ function get(url) {
 
 export const api = {
   'pokemon': getPokemonApi,
-  'pokemonSpecies': getPokemonSpeciesApi,
+  'specie': getPokemonSpecieApi,
   'type': getPokemonTypeApi,
   'ability': getPokemonAbilityApi,
   'evolutionChain': getPokemonEvolutionChainApi,
   'version': getPokemonVersionApi,
+  'versionGroup': getPokemonVersionGroupApi,
   'move': getPokemonMoveApi,
   'item': getPokemonItemApi,
   'itemCategory': getPokemonItemCategoryApi,
   'itemPocket': getPokemonItemPocketApi,
-  'generations': getPokemonGenerationsApi,
+  'generation': getPokemonGenerationApi,
   'languages': getPokemonLanguagesApi,
   'get': get
 }
