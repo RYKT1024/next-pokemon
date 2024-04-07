@@ -61,6 +61,7 @@ async function updateErrorJson(errorKey, errorValues, silent=false) {
   if (!silent) console.log(`Error ${errorKey} have been written to scripts/error.json.`);
 }
 
+
 async function updateErrorKey(pool, errorKey = 'all', silent = false, depth = 0) {
   const data = await readFile(`scripts/error.json`, 'utf8');
   const errorData = JSON.parse(data);
@@ -79,12 +80,16 @@ async function updateErrorKey(pool, errorKey = 'all', silent = false, depth = 0)
             _errorValues = await updateGeneration(pool, errorValues, 'errorFix');
             errorData[errorKey] = _errorValues;
             break;
+          case 'Move':
+            _errorValues = await updateMove(pool, errorValues, 'errorFix');
+            errorData[errorKey] = _errorValues;
         }
         
         if (errorData[errorKey].length) {
           // 递归直到解决所有errorKey error，但不超过8层深度
           if (depth >= 8) {
-            console.error(`\rError ${errorKey} failed to fix: retry over 8 times.`);
+            process.stdout.write('\x1b[2K\r');
+            console.error(`Failed to fix error ${errorKey}: retry over 8 times.`);
             return;
           }
           await updateErrorKey(pool, errorKey, true, depth + 1);
@@ -92,7 +97,10 @@ async function updateErrorKey(pool, errorKey = 'all', silent = false, depth = 0)
       }
       else return;
       
-      if (!silent) console.log(`\rError ${errorKey} fixed successfully.`);
+      if (!silent) {
+        process.stdout.write('\x1b[2K\r');
+        console.log(`Error ${errorKey} resolved.`);
+      }
     } 
     catch (err) {
       if (!silent) console.error(`\nError updating error ${errorKey}:`, err);
@@ -103,12 +111,118 @@ async function updateErrorKey(pool, errorKey = 'all', silent = false, depth = 0)
     for (const key of Object.keys(errorData)) {
       await updateErrorKey(pool, key, false, depth + 1);
     }
-    if (!silent) console.log('\nAll errors fixed successfully.');
+    if (!silent) console.log('\nAll errors resolved.');
   }
 }
 
 
-async function updateTypes(pool) {
+async function updateCommons(pool) {
+  try {
+    // 宝可梦叫声类型 CrieType
+    await pool.query(`
+      INSERT INTO PokemonCrieType(brief) VALUES
+      ('latest'), ('legacy')
+      ON CONFLICT (brief) DO NOTHING;
+    `);
+    // 宝可梦图片类型
+    await pool.query(`
+      INSERT INTO PokemonImageType(brief) VALUES
+      ('front_default'), ('front_shiny'), ('front_female'), ('front_shiny_female'), 
+      ('back_default'), ('back_shiny'), ('back_female'), ('back_shiny_female'),
+      ('front_transparent'), ('front_shiny_transparent'), 
+      ('back_transparent'), ('back_shiny_transparent')
+      ON CONFLICT (brief) DO NOTHING;
+    `)
+    // 宝可梦基本属性类型 StatType
+    const statTypesRes = await api.stat('');
+    const statTypes = statTypesRes.data.results;
+    await pool.query(`
+      INSERT INTO PokemonStatType(stid ,brief) VALUES
+      ${statTypes.map(statType =>
+        `('${getId(statType.url)}', '${statType.name}')`
+      ).join(', ')}
+      ON CONFLICT (brief) DO NOTHING;
+    `);
+    // 宝可梦基本属性名称 StatTypeDetail
+    await Promise.all(statTypes.map(async (statType) => {
+      const stid = getId(statType.url);
+      const statTypeRes = await api.stat(stid);
+      const statTypeData = statTypeRes.data;
+      await pool.query(`
+        INSERT INTO PokemonStatTypeDetail(stid, language, name) VALUES
+        ${statTypeData.names.map(name =>
+          `('${stid}', '${name.language.name}', '${name.name.replace(/'/g, "''")}')`
+        ).join(', ')}
+        ON CONFLICT (stid, language) DO UPDATE SET
+        name = EXCLUDED.name;
+      `);
+    }));
+    console.log("Stat types and details inserted successfully.");
+  }
+  catch (err) {
+    console.error('Error updating Stats:', err);
+  }
+  try {
+    // 宝可梦招式类型 MoveClass
+    const moveClassesRes = await api.moveClass('');
+    const moveClassesData = moveClassesRes.data.results;
+    await pool.query(`
+      INSERT INTO PokemonMoveClass(mcid,brief) VALUES
+      ${moveClassesData.map(moveClass =>
+        `('${getId(moveClass.url)}', '${moveClass.name}')`
+      ).join(', ')}
+      ON CONFLICT (mcid) DO UPDATE SET brief = EXCLUDED.brief;
+    `);
+    // 宝可梦招式类型信息 MoveClassDetail
+    await Promise.all(moveClassesData.map(async (moveClass) => {
+      const mcid = getId(moveClass.url);
+      const moveClassRes = await api.moveClass(mcid);
+      const moveClassData = moveClassRes.data;
+      await pool.query(`
+        INSERT INTO PokemonMoveClassDetail(mcid, language, description) VALUES
+        ${moveClassData.descriptions.map(description =>
+          `('${mcid}', '${description.language.name}', '${description.description.replace(/'/g, "''")}')`
+        ).join(', ')}
+        ON CONFLICT (mcid, language) DO UPDATE SET
+        description = EXCLUDED.description;
+      `)
+    }))
+    console.log("Move classes and details inserted successfully.");
+  }
+  catch (err) {
+    console.error('Error updating move classes:', err);
+  }
+  try {
+    // 宝可梦颜色 Color
+    const colorRes = await api.color('');
+    const colors = colorRes.data.results;
+    await pool.query(`
+      INSERT INTO PokemonColor(brief) VALUES
+      ${colors.map(color =>
+        `('${color.name}')`
+      ).join(', ')}
+      ON CONFLICT (brief) DO NOTHING;
+    `);
+    // 宝可梦颜色名称 ColorDetail
+    await Promise.all(colors.map(async (color) => {
+      const colorId = getId(color.url);
+      const colorRes = await api.color(colorId);
+      const colorData = colorRes.data;
+      await pool.query(`
+        INSERT INTO PokemonColorDetail(cid, language, name) VALUES
+        ${colorData.names.map(name =>
+          `('${colorId}', '${name.language.name}', '${name.name.replace(/'/g, "''")}')`
+        ).join(', ')}
+        ON CONFLICT (cid, language) DO UPDATE SET
+        name = EXCLUDED.name;
+      `);
+    }))
+    console.log("Colors and details inserted successfully.");
+  }
+  catch (err) {
+    console.error('Error updating colors:', err);
+  }
+  // 待修改并发
   try {
     const res = await api.type('');
     const types = res.data.results;
@@ -142,7 +256,7 @@ async function updateTypes(pool) {
         name = EXCLUDED.name;
       `;
       await pool.query(typeNameQuery);
-      console.log(`Pokemon type ${typeId} names inserted successfully.`);
+      // console.log(`Pokemon type ${typeId} names inserted successfully.`);
 
       for (const relation in data.damage_relations) {
         const toTypeIds = data.damage_relations[relation].map(target => getId(target.url));
@@ -162,7 +276,7 @@ async function updateTypes(pool) {
           await pool.query(typeRelationQuery);
         }
       }
-      console.log(`Pokemon type ${typeId} relations inserted successfully.`);
+      // console.log(`Pokemon type ${typeId} relations inserted successfully.`);
     }
     console.log("Pokemon typenames and relations inserted successfully.");
   }
@@ -172,7 +286,7 @@ async function updateTypes(pool) {
   }
 }
 
-async function updateGeneration(pool, generations = [], mode = 'all') {
+async function updateGeneration(pool, generations=[], mode='default') {
   let errorGeneration = [];
 
   try {
@@ -214,12 +328,28 @@ async function updateGeneration(pool, generations = [], mode = 'all') {
           const versionGroupId = getId(versionGroup.url);
           const versionGroupRes = await api.versionGroup(versionGroupId);
           const versionGroupData = versionGroupRes.data;
+          // 宝可梦版本组 VersionGroup
+          await pool.query(`
+            INSERT INTO PokemonVersionGroup(vgid, gid, brief) VALUES
+            ('${versionGroupId}', '${gid}', '${versionGroupData.name.replace(/'/g, "''")}')
+            ON CONFLICT (vgid) DO UPDATE SET gid = EXCLUDED.gid, brief = EXCLUDED.brief;
+          `);
+
+          // 宝可梦版本组名称 VersionGroupDetail
+          await pool.query(`
+            INSERT INTO PokemonVersionGroupDetail(vgid, language, name) VALUES
+            ('${versionGroupId}', '${'en'}', '${versionGroupData.name.replace(/'/g, "''")}')
+            ON CONFLICT (vgid, language) DO UPDATE SET name = EXCLUDED.name;
+          `);
 
           // 宝可梦版本 Version
           await Promise.all(versionGroupData.versions.map(async (version) => {
             const versionId = getId(version.url);
             const escapedVersionName = version.name.replace(/'/g, "''");
-            await pool.query(`INSERT INTO PokemonVersion(vid, gid, brief) VALUES (${versionId}, '${gid}', '${escapedVersionName}') ON CONFLICT (vid) DO UPDATE SET gid = EXCLUDED.gid, brief = EXCLUDED.brief;`);
+            await pool.query(`
+              INSERT INTO PokemonVersion(vid, vgid, brief) VALUES 
+              (${versionId}, '${versionGroupId}', '${escapedVersionName}') 
+              ON CONFLICT (vid) DO UPDATE SET vgid = EXCLUDED.vgid, brief = EXCLUDED.brief;`);
 
             // 获取每个版本的详细信息并并发插入 PokemonVersionDetail
             const versionRes = await api.version(versionId);
@@ -252,6 +382,7 @@ async function updateGeneration(pool, generations = [], mode = 'all') {
 
       } catch (err) {
         if (mode !== 'errorFix') console.log(`\nFailed to update generation ${gid}`);
+        // console.error(err);
         errorGeneration.push(gid);
       }
     }));
@@ -265,12 +396,124 @@ async function updateGeneration(pool, generations = [], mode = 'all') {
   return errorGeneration;
 }
 
+async function updateMove(pool, moveIds=[], mode='default') {
+  const errorMids = [];
+  const total = await (async () => {
+    if (!moveIds.length) {
+      const moveRes = await api.move(`?limit=1`);
+      return moveRes.data.count;
+    }
+    else return moveIds.length;
+  })()
+  let processed = 0;
+  const processContent = (() => {
+    if (mode=='default') return 'Updating Moves...';
+    else return 'Fixing Error Moves...';
+  })()
+  const updateProcess = (length = 0) => {
+    processed += length;
+    process.stdout.write('\x1b[2K\r');
+    process.stdout.write(`${processContent} ${((processed / total) * 100).toFixed(2)}%  [${processed}/${total}]`);
+  }
+  const silent = mode=='default' ? false : true;
+
+  // 异步函数处理单个 Move ID
+  async function processMoveId(mid) {
+    try {
+      const moveRes = await api.move(mid).catch(err => {
+        throw new Error(`Failed to fetch move data: ${err.message}`);
+      });
+      const data = moveRes.data;
+      const tid = getId(data.type.url);
+      const mcid = getId(data.damage_class.url);
+      const generation = getId(data.generation.url);
+      const power = data.power ? data.power : 0;
+      const pp = data.pp ? data.pp : 0;
+      const priority = data.priority ? data.priority : 0;
+      const accuracy = data.accuracy ? data.accuracy : 100;
+      // 宝可梦招式 Move
+      await pool.query(`
+        INSERT INTO PokemonMove(mid, tid, mcid, generation, power, pp, priority, accuracy) VALUES
+        ('${mid}', '${tid}', '${mcid}', '${generation}', '${power}', '${pp}', '${priority}', '${accuracy}')
+        ON CONFLICT (mid) DO UPDATE SET
+        tid = EXCLUDED.tid, mcid = EXCLUDED.mcid, generation = EXCLUDED.generation, power = EXCLUDED.power, pp = EXCLUDED.pp, priority = EXCLUDED.priority, accuracy = EXCLUDED.accuracy;
+      `);
+
+      let descriptions = data.flavor_text_entries;
+      if (!descriptions.length) {
+        await pool.query(`
+          INSERT INTO PokemonMoveDetail(mid, language, name, description) VALUES
+          ${data.names.map(name =>
+            `('${mid}', '${name.language.name}', '${name.name.replace(/'/g, "''")}', 'null')`
+          ).join(', ')}
+          ON CONFLICT (mid, language) DO UPDATE SET
+          name = EXCLUDED.name, description = EXCLUDED.description;
+        `);
+      }
+      else {
+        const uniqueMoveDetails = {}; // 保证使用同一语言的最新描述信息
+        descriptions.forEach(description => {
+          const language = description.language.name;
+          const name = data.names.find(name => name.language.name === language)?.name.replace(/'/g, "''") || '';
+          const escapedDescription = description.flavor_text.replace(/'/g, "''");
+          const key = `${language}`;
+          uniqueMoveDetails[key] = [language, name, escapedDescription];
+        });
+        // 将对象的值转换回数组形式
+        const moveDetails = Object.values(uniqueMoveDetails);
+        const moveDetailValue = moveDetails.map(moveDetail => 
+          `('${mid}', '${moveDetail[0]}', '${moveDetail[1]}', '${moveDetail[2]}')`
+        );
+        // 宝可梦招式信息 MoveDetail
+        await pool.query(`
+          INSERT INTO PokemonMoveDetail(mid, language, name, description) VALUES
+          ${moveDetailValue.join(",")}
+          ON CONFLICT (mid, language) DO UPDATE SET
+          name = EXCLUDED.name, description = EXCLUDED.description;
+        `);
+      }
+    }
+    catch (error) {
+      process.stdout.write('\x1b[2K\r');
+      // console.error(`Failed to update Move ${mid}:`, error);
+      if (!silent) console.error(`Failed to update Move ${mid}`);
+      errorMids.push(mid); // 收集出错的pid
+      updateProcess();
+    }
+  }
+
+  try {
+    if (moveIds.length === 0) {
+      // 获取全部 Move ID
+      const movesRes = await api.move(`?limit=${total}`);
+      const moves = movesRes.data.results;
+      moveIds = moves.map((move) => getId(move.url));
+    }
+    // 每次并发 60 个请求
+    const chunkSize = 60;
+    updateProcess();
+    for (let i = 0; i < total; i += chunkSize) {
+      const chunk = moveIds.slice(i, i + chunkSize);
+      await Promise.all(chunk.map(mid => processMoveId(mid)));
+      // 更新进度条
+      updateProcess(chunk.length);
+      // 更新 error.json 文件
+      await updateErrorJson('Move', errorMids, true);
+    }
+    if (!silent) console.log('\nAll moves have been processed.');
+  }
+  catch (err) {
+    if (!silent) console.error('Error updating moves:', err);
+  }
+
+  await updateErrorJson('Move', errorMids, mode == 'errorFix' || !errorMids.length);
+  return errorMids;
+}
 
 async function updatePokemon(pool, pokemonIds=[], mode='default') {
   const errorPids = []; // 用于收集错误的pid
   const total = await (async () => {
     if (!pokemonIds.length) {
-      // 获取所有 Pokemon ID
       const pokemonsRes = await api.pokemon(`?limit=1`);
       return pokemonsRes.data.count;
     }
@@ -283,17 +526,22 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
   })()
   const updateProcess = (length = 0) => {
     processed += length;
-    process.stdout.write(`\r${processContent} ${((processed / total) * 100).toFixed(2)}%  [${processed}/${total}]`);
+    process.stdout.write('\x1b[2K\r');
+    process.stdout.write(`${processContent} ${((processed / total) * 100).toFixed(2)}%  [${processed}/${total}]`);
   }
   const silent = mode=='default' ? false : true;
-  // 定义一个异步函数来处理单个 Pokemon ID
+
+  // 异步函数处理单个 Pokemon ID
   async function processPokemonId(pid) {
     try {
       const pokemonRes = await api.pokemon(pid);
       const data = pokemonRes.data;
       const sid = getId(data.species.url);
+      const fid = getId(data.forms[0].url);
       const pokemonSpeciesRes = await api.specie(sid);
       const sdata = pokemonSpeciesRes.data;
+      const pokemonFormRes = await api.form(fid);
+      const fdata = pokemonFormRes.data;
       const ecid = getId(sdata.evolution_chain.url);
 
       // 宝可梦进化链 EvolutionChain
@@ -303,34 +551,76 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
       `);
 
       // 宝可梦属别 Genus
-      const genus = sdata.genera.find(genus => genus.language.name === 'en');
+      const genus = sdata.genera.find(genus => genus.language.name === 'en') ?
+        sdata.genera.find(genus => genus.language.name === 'en') : 'unknown';
       await pool.query(`
         INSERT INTO PokemonGenus(brief) VALUES
         ('${genus.genus}')
         ON CONFLICT (brief) DO NOTHING;
-      `)
+      `);
+
       const genusId = await pool.query(`
         SELECT gid FROM PokemonGenus WHERE brief = '${genus.genus}'
-      `)
+      `);
       const gid = genusId.rows[0].gid;
 
-      // 宝可梦属别名称 GenusDetail
-      await pool.query(`
-        INSERT INTO PokemonGenusDetail(gid, language, name) VALUES
-        ${sdata.genera.map(genus =>
-          `('${gid}', '${genus.language.name}', '${genus.genus}')`
-        ).join(', ')}
-        ON CONFLICT (gid, language) DO UPDATE SET
-        name = EXCLUDED.name;
-      `)
+      if (genus !== 'unknown') {
+        // 宝可梦属别信息 GenusDetail
+        await pool.query(`
+          INSERT INTO PokemonGenusDetail(gid, language, name) VALUES
+          ${sdata.genera.map(genus =>
+            `('${gid}', '${genus.language.name}', '${genus.genus}')`
+          ).join(', ')}
+          ON CONFLICT (gid, language) DO UPDATE SET
+          name = EXCLUDED.name;
+        `);
+      }
 
       // 宝可梦种族 Specie
       await pool.query(`
-        INSERT INTO PokemonSpecie(sid, ecid, gid) VALUES ('${sid}', '${ecid}', '${gid}')
+        INSERT INTO PokemonSpecie(sid, ecid, gid, generation, cid) VALUES 
+        ('${sid}', '${ecid}', '${gid}', '${getId(sdata.generation.url)}', '${getId(sdata.color.url)}')
         ON CONFLICT (sid) DO UPDATE SET 
         ecid = EXCLUDED.ecid,
-        gid = EXCLUDED.gid;
+        gid = EXCLUDED.gid,
+        generation = EXCLUDED.generation,
+        cid = EXCLUDED.cid;
       `);
+
+      // 宝可梦种族信息 SpecieDetail
+      const snames = sdata.names;
+      await pool.query(`
+        INSERT INTO PokemonSpecieDetail(sid, language, name) VALUES
+        ${snames.map(name =>
+          `('${sid}', '${name.language.name}', '${name.name.replace(/'/g, "''")}')`
+        ).join(', ')}
+        ON CONFLICT (sid, language) DO UPDATE SET
+        name = EXCLUDED.name;
+      `);
+
+      // 宝可梦种族描述 SpecieText
+      let texts = sdata.flavor_text_entries;
+      if (!texts.length) {
+        await pool.query(`
+          INSERT INTO PokemonSpecieText(sid, language, flavorText) VALUES
+          ${sdata.names.map(name =>
+            `('${sid}', '${name.language.name}', 'null')`
+          ).join(', ')}
+          ON CONFLICT (sid, language, flavorText) DO NOTHING;
+        `);
+      }
+      else {
+        const flavorTextsValue = texts.map(text => {
+          const language = text.language.name;
+          const flavorText = text.flavor_text.replace(/'/g, "''");
+          return `('${sid}', '${language}', '${flavorText}')`;
+        });
+        await pool.query(`
+          INSERT INTO PokemonSpecieText(sid, language, flavorText) VALUES
+          ${flavorTextsValue.join(",")}
+          ON CONFLICT (sid, language, flavorText) DO NOTHING;
+        `);
+      }
 
       // 宝可梦 Pokemon
       await pool.query(`
@@ -343,11 +633,23 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
       await pool.query(`
         INSERT INTO PokemonDetail(pid, language, name) VALUES
         ${names.map(name =>
-          `('${pid}', '${name.language.name}', '${name.name}')`
+          `('${pid}', '${name.language.name}', '${name.name.replace(/'/g, "''")}')`
         ).join(', ')}
         ON CONFLICT (pid, language) DO UPDATE SET
         name = EXCLUDED.name;
       `);
+      if (fdata.names.length) {
+        try {
+          await pool.query(`
+          INSERT INTO PokemonDetail(pid, language, name) VALUES
+          ${fdata.names.map(name =>
+            `('${pid}', '${name.language.name}', '${name.name.replace(/'/g, "''")}')`
+          ).join(', ')}
+          ON CONFLICT (pid, language) DO UPDATE SET
+          name = EXCLUDED.name;
+        `);
+        } catch (error) {}
+      }
 
       // 宝可梦属性 TypeLink
       const types = data.types;
@@ -359,11 +661,120 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
         ).join(', ')}
         ON CONFLICT (pid, tid) DO NOTHING;
       `);
+      
+      // 宝可梦基本信息 Base
+      const experience = data.base_experience ? data.base_experience : 9999;
+      await pool.query(`
+        INSERT INTO PokemonBase(pid, height, weight, experience) VALUES
+        ('${pid}', ${data.height}, ${data.weight}, ${experience})
+        ON CONFLICT (pid) DO UPDATE SET
+        height = EXCLUDED.height,
+        weight = EXCLUDED.weight,
+        experience = EXCLUDED.experience;
+      `);
+      
+      // 宝可梦基本属性 Stat
+      const stats = data.stats;
+      await pool.query(`
+        INSERT INTO PokemonStat(pid, stid, baseStat, effort) VALUES
+        ${stats.map(stat =>
+          `('${pid}', '${getId(stat.stat.url)}', '${stat.base_stat}', '${stat.effort}')`
+        ).join(', ')}
+        ON CONFLICT (pid, stid) DO UPDATE SET
+        baseStat = EXCLUDED.baseStat,
+        effort = EXCLUDED.effort;
+      `);
 
+      // 宝可梦叫声 Crie
+      const cries = data.cries;
+      if (cries.latest) 
+        await pool.query(`
+          INSERT INTO PokemonCrie(pid, ctid_, url) VALUES
+          ('${pid}', '${1}', '${cries.latest}')
+          ON CONFLICT (pid, ctid_) DO UPDATE SET
+          url = EXCLUDED.url;
+        `);
+      if (cries.legacy)
+        await pool.query(`
+          INSERT INTO PokemonCrie(pid, ctid_, url) VALUES
+          ('${pid}', '${2}', '${cries.legacy}')
+          ON CONFLICT (pid, ctid_) DO UPDATE SET
+          url = EXCLUDED.url;
+        `);
+
+      // 宝可梦招式关系 MoveLink
+      const moves = data.moves;
+      const moveLinkValues = moves.map(move => {
+        const mid = getId(move.move.url);
+        const versionGroupDetails = move.version_group_details;
+        let level = 0;
+        // 获取最高的学习等级
+        for (let i = 0; i < versionGroupDetails.length; i++) {
+          if (versionGroupDetails[i].level_learned_at > level) {
+            level = versionGroupDetails[i].level_learned_at;
+          }
+        }
+        return `('${pid}', '${mid}', '${level}')`;
+      });
+      if (moveLinkValues.length) {
+        await pool.query(`
+          INSERT INTO PokemonMoveLink(pid, mid, level) VALUES
+          ${moveLinkValues.join(', ')}
+          ON CONFLICT (pid, mid) DO UPDATE SET
+          level = EXCLUDED.level;
+        `);
+      }
+
+      // 宝可梦图片 Image
+      const imageTypeRes = await pool.query('SELECT itid, brief FROM PokemonImageType');
+      const imageTypeObject = imageTypeRes.rows.reduce((obj, row) => {
+        obj[row.brief] = row.itid;
+        return obj;
+      }, {}); // 获取 ImageType 键值对
+      const imgs = data.sprites;
+      // 初始化结果对象
+      const result = {};
+      // 递归函数来提取URL
+      function extractUrls(obj) {
+        for (const [key, value] of Object.entries(obj)) {
+            if (typeof value === 'string' && value.startsWith('http')) {
+                // 如果是URL字符串，将其添加到结果对象
+                if (!result[key]) {
+                    result[key] = [];
+                }
+                result[key].push(value);
+            } else if (typeof value === 'object' && value !== null) {
+                // 如果是对象，递归调用
+                extractUrls(value);
+            }
+        }
+      }
+      // 提取sprites对象中的所有URL
+      extractUrls(imgs);
+      await Promise.all(Object.entries(result).map(async ([key, value]) => {
+        if (imageTypeObject[key]) {
+          const itid = imageTypeObject[key];
+          const urls = value;
+          const urlsValue = urls.map(url => `('${pid}', '${itid}', '${url}')`);
+          await pool.query(`
+            INSERT INTO PokemonImage(pid, itid, url) VALUES
+            ${urlsValue.join(', ')}
+            ON CONFLICT (url) DO NOTHING;
+          `);
+        }
+        else {
+          console.log(`\nUnknown brief: ${key}`);
+          await pool.query(`
+            INSERT INTO PokemonImageType(brief) VALUES
+            ('${key}')
+            ON CONFLICT (brief) DO NOTHING;
+          `);
+        }
+      }))
 
     } catch (error) {
       process.stdout.write('\x1b[2K\r');
-      // console.error(`Failed to insert Pokemon ${pid}:`, error);
+      // console.error(`Failed to update Pokemon ${pid}:`, error);
       if (!silent) console.error(`Failed to update Pokemon ${pid}`);
       errorPids.push(pid); // 收集出错的pid
       updateProcess();
@@ -372,7 +783,7 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
 
   try {
     if (pokemonIds.length === 0) {
-      // 获取指定的 Pokemon ID
+      // 获取全部 Pokemon ID
       const pokemonsRes = await api.pokemon(`?limit=${total}`);
       const pokemons = pokemonsRes.data.results;
       pokemonIds = pokemons.map((pokemon) => getId(pokemon.url));
@@ -380,6 +791,7 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
 
     // 每次并发 60 个请求
     const chunkSize = 60;
+    updateProcess();
     for (let i = 0; i < total; i += chunkSize) {
       const chunk = pokemonIds.slice(i, i + chunkSize);
       await Promise.all(chunk.map(pid => processPokemonId(pid)));
@@ -390,9 +802,11 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
     }
 
     if (!silent) console.log('\nAll pokemons have been processed.');
-  } catch (err) {
+  } 
+  catch (err) {
     if (!silent) console.error('Error updating pokemon:', err);
   }
+
   if (!silent) console.log(`Error Pokemon have been written to scripts/error.json.`);
   await updateErrorJson('Pokemon', errorPids, true);
   return errorPids
@@ -402,10 +816,10 @@ async function main() {
   const pool = new pg.Pool(pgconfig);
 
   // await updateLanguages(pool);
-  // await updateTypes(pool);
+  // await updateCommons(pool);
   // await updateGeneration(pool);
-
-  // await updatePokemon(pool);
+  // await updateMove(pool);
+  await updatePokemon(pool);
   await updateErrorKey(pool);
 
 
@@ -413,3 +827,5 @@ async function main() {
 }
 
 main().catch((err) => console.error(err));
+
+// TODO: 进化链 特性 物品

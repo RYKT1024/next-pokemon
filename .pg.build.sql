@@ -18,13 +18,32 @@ CREATE TABLE PokemonGenerationDetail (
 
 CREATE INDEX idx_pokemongenerationdetail_gid_language ON PokemonGenerationDetail(gid, language);
 
+CREATE TABLE PokemonVersionGroup (
+    vgid        SERIAL PRIMARY KEY,
+    gid         INTEGER NOT NULL REFERENCES PokemonGeneration(gid),
+    brief       VARCHAR(40) NOT NULL UNIQUE
+);
+
+CREATE INDEX idx_pokemonversiongroup_gid ON PokemonVersionGroup(gid);
+
+CREATE TABLE PokemonVersionGroupDetail (
+    vgdid       SERIAL PRIMARY KEY,
+    vgid        INTEGER NOT NULL REFERENCES PokemonVersionGroup(vgid),
+    language    VARCHAR(10) NOT NULL REFERENCES Languages(name),
+    name        VARCHAR(60) NOT NULL,
+
+    UNIQUE(vgid, language)
+);
+
+CREATE INDEX idx_pokemonversiongroupdetail_vgid_language ON PokemonVersionGroupDetail(vgid, language);
+
 CREATE TABLE PokemonVersion (
     vid         SERIAL PRIMARY KEY,
-    gid         INTEGER NOT NULL REFERENCES PokemonGeneration(gid),
+    vgid        INTEGER NOT NULL REFERENCES PokemonVersionGroup(vgid),
     brief       VARCHAR(30) NOT NULL UNIQUE
 );
 
-CREATE INDEX idx_pokemonversion_gid ON PokemonVersion(gid);
+CREATE INDEX idx_pokemonversion_vgid ON PokemonVersion(vgid);
 
 CREATE TABLE PokemonVersionDetail (
     vdid        SERIAL PRIMARY KEY,
@@ -71,7 +90,6 @@ CREATE TABLE PokemonEvolutionChain (
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
->>>>
 CREATE TABLE PokemonEvolution (     
     eid         SERIAL PRIMARY KEY,
     ecid        INTEGER NOT NULL REFERENCES PokemonEvolutionChain(ecid),
@@ -99,17 +117,47 @@ CREATE TABLE PokemonGenusDetail (
     UNIQUE(gid, language)
 );
 
+CREATE INDEX idx_pokemongenusdetail_gid_language ON PokemonGenusDetail(gid, language);
+
+CREATE TABLE PokemonColor (
+    cid         SERIAL PRIMARY KEY,
+    brief       VARCHAR(10) NOT NULL UNIQUE
+);
+
+CREATE TABLE PokemonColorDetail (
+    cdid        SERIAL PRIMARY KEY,
+    cid         INTEGER NOT NULL REFERENCES PokemonColor(cid),
+    language    VARCHAR(10) NOT NULL REFERENCES Languages(name),
+    name        VARCHAR(20) NOT NULL,
+
+    UNIQUE(cid, language)
+);
+
+CREATE INDEX idx_pokemoncolordetail_cid_language ON PokemonColorDetail(cid, language);
+
 <<<<
 CREATE TABLE PokemonSpecie (
     sid         SERIAL PRIMARY KEY,
     ecid        INTEGER NOT NULL REFERENCES PokemonEvolutionChain(ecid),
     gid         INTEGER NOT NULL REFERENCES PokemonGenus(gid),
+    cid         INTEGER NOT NULL REFERENCES PokemonColor(cid),
     generation  INTEGER NOT NULL REFERENCES PokemonGeneration(gid),
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_pokemonspecie_ecid ON PokemonSpecie(ecid);
 CREATE INDEX idx_pokemonspecie_generation ON PokemonSpecie(generation);
+
+CREATE TABLE PokemonSpecieDetail (
+    sdid        SERIAL PRIMARY KEY,
+    sid         INTEGER NOT NULL REFERENCES PokemonSpecie(sid),
+    language    VARCHAR(10) NOT NULL REFERENCES Languages(name),
+    name        VARCHAR(40) NOT NULL,
+
+    UNIQUE(sid, language)
+);
+
+CREATE INDEX idx_pokemonspeciedetail_sid_language ON PokemonSpecieDetail(sid, language);
 
 CREATE TABLE PokemonSpecieText (
     stid        SERIAL PRIMARY KEY,
@@ -154,35 +202,38 @@ CREATE TABLE PokemonImageType (
     brief       VARCHAR(30) NOT NULL UNIQUE
 );
 
-CREATE TABLE PokemonImageTypeDetail (
-    itdid       SERIAL PRIMARY KEY,
-    itid        SMALLINT NOT NULL REFERENCES PokemonImageType(itid),
-    language    VARCHAR(10) NOT NULL REFERENCES Languages(name),
-    name        VARCHAR(40) NOT NULL,
-
-    UNIQUE(itid, language)
-);
-
-CREATE INDEX idx_pokemonimagetypedetail_itid_language ON PokemonImageTypeDetail(itid, language);
-
 CREATE TABLE PokemonImage (
     iid         SERIAL PRIMARY KEY,
     pid         INTEGER NOT NULL REFERENCES Pokemon(pid),
-    vid         INTEGER NOT NULL REFERENCES PokemonVersion(vid),
     itid        SMALLINT NOT NULL REFERENCES PokemonImageType(itid),
-    url         VARCHAR(256),
-
-    UNIQUE(pid, vid, itid)
+    url         VARCHAR(256) UNIQUE
 );
 
 CREATE INDEX idx_pokemonimage_pid ON PokemonImage(pid);
 CREATE INDEX idx_pokemonimage_pid_itid ON PokemonImage(pid, itid);
 
+CREATE TABLE PokemonMoveClass (
+    mcid        SMALLSERIAL PRIMARY KEY,
+    brief       VARCHAR(30) NOT NULL UNIQUE
+);
+
+CREATE TABLE PokemonMoveClassDetail (
+    mcdid       SERIAL PRIMARY KEY,
+    mcid        SMALLINT NOT NULL REFERENCES PokemonMoveClass(mcid),
+    language    VARCHAR(10) NOT NULL REFERENCES Languages(name),
+    description VARCHAR(100) NOT NULL,
+
+    UNIQUE(mcid, language)
+);
+
+CREATE INDEX idx_pokemonmoveclassdetail_mcid_language ON PokemonMoveClassDetail(mcid, language);
+
 CREATE TABLE PokemonMove (
     mid         SERIAL PRIMARY KEY,
     tid         SMALLINT NOT NULL REFERENCES PokemonType(tid),
+    mcid        SMALLINT NOT NULL REFERENCES PokemonMoveClass(mcid),
     generation  INTEGER NOT NULL REFERENCES PokemonGeneration(gid),
-    power       INTEGER,
+    power       INTEGER NOT NULL,
     pp          INTEGER NOT NULL,
     priority    INTEGER NOT NULL,
     accuracy    INTEGER NOT NULL,
@@ -230,7 +281,7 @@ CREATE INDEX idx_pokemoncrie_pid_ctid_ ON PokemonCrie(pid, ctid_);
 
 CREATE TABLE PokemonStatType (
     stid        SMALLSERIAL PRIMARY KEY,
-    brief       VARCHAR(20) NOT NULL
+    brief       VARCHAR(20) NOT NULL UNIQUE
 );
 
 CREATE TABLE PokemonStatTypeDetail (
@@ -248,8 +299,8 @@ CREATE TABLE PokemonStat (
     sid         SERIAL PRIMARY KEY,
     pid         INTEGER NOT NULL REFERENCES Pokemon(pid),
     stid        SMALLINT NOT NULL REFERENCES PokemonStatType(stid),
-    baseStat    INTEGER NOT NULL,
-    effort      INTEGER NOT NULL,
+    baseStat    SMALLINT NOT NULL,
+    effort      SMALLINT NOT NULL,
 
     UNIQUE(pid, stid)
 );
@@ -260,9 +311,9 @@ CREATE INDEX idx_pokemonstat_pid_effort ON PokemonStat(pid, effort);
 CREATE TABLE PokemonBase (
     bid         SERIAL PRIMARY KEY,
     pid         INTEGER NOT NULL UNIQUE REFERENCES Pokemon(pid),
-    height      INTEGER NOT NULL,
-    weight      INTEGER NOT NULL,
-    experience  INTEGER NOT NULL
+    height      SMALLINT NOT NULL,
+    weight      SMALLINT NOT NULL,
+    experience  SMALLINT NOT NULL
 );
 
 CREATE INDEX idx_pokemonbase_pid ON PokemonBase(pid);
