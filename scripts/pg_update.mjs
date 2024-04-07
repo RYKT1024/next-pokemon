@@ -61,9 +61,10 @@ async function updateErrorJson(errorKey, errorValues, silent=false) {
   if (!silent) console.log(`Error ${errorKey} have been written to scripts/error.json.`);
 }
 
-async function updateErrorKey(pool, errorKey='all', silent=false) {
+async function updateErrorKey(pool, errorKey = 'all', silent = false, depth = 0) {
   const data = await readFile(`scripts/error.json`, 'utf8');
   const errorData = JSON.parse(data);
+  
   if (errorKey != 'all') {
     try {
       const errorValues = errorData[errorKey];
@@ -79,26 +80,33 @@ async function updateErrorKey(pool, errorKey='all', silent=false) {
             errorData[errorKey] = _errorValues;
             break;
         }
-        if (errorData[errorKey].length){
-          // 递归直到解决所有errorKey error
-          await updateErrorKey(pool, errorKey, true);
+        
+        if (errorData[errorKey].length) {
+          // 递归直到解决所有errorKey error，但不超过8层深度
+          if (depth >= 8) {
+            console.error(`\rError ${errorKey} failed to fix: retry over 8 times.`);
+            return;
+          }
+          await updateErrorKey(pool, errorKey, true, depth + 1);
         }
       }
-      else return
-      if (!silent) console.log(`\nError ${errorKey} fixed successfully.`);
+      else return;
+      
+      if (!silent) console.log(`\rError ${errorKey} fixed successfully.`);
     } 
     catch (err) {
-      if (!silent) console.error(`Error updateing error ${errorKey}:`, err);
+      if (!silent) console.error(`\nError updating error ${errorKey}:`, err);
     }
   }
   else {
-    // 更新所有errorKey
-    for (const errorKey of Object.keys(errorData)) {
-      await updateErrorKey(pool, errorKey);
+    // 更新所有errorKey，首次调用不计入递归深度
+    for (const key of Object.keys(errorData)) {
+      await updateErrorKey(pool, key, false, depth + 1);
     }
-    console.log('\nAll errors fixed successfully.');
+    if (!silent) console.log('\nAll errors fixed successfully.');
   }
 }
+
 
 async function updateTypes(pool) {
   try {
@@ -164,8 +172,9 @@ async function updateTypes(pool) {
   }
 }
 
-async function updateGeneration(pool, generations=[], mode='all') {
+async function updateGeneration(pool, generations = [], mode = 'all') {
   let errorGeneration = [];
+
   try {
     if (!generations.length) {
       // 如果没有传入 generations，则从 API 获取所有 generations
@@ -182,103 +191,76 @@ async function updateGeneration(pool, generations=[], mode='all') {
       ).join(', ')}
       ON CONFLICT (gid) DO NOTHING;
     `);
-    
+
+    // 获取所有版本组的数量用于进度条
     const versionGroupsRes = await api.versionGroup('');
     let totalVersionGroups = versionGroupsRes.data.count;
     let processedVersionGroups = 0;
 
-    for (const gid of generations) {
-      let generationData;
+    // 并发处理世代
+    await Promise.all(generations.map(async (gid) => {
       try {
         const res = await api.generation(gid);
-        generationData = res.data;
+        const generationData = res.data;
 
         // 宝可梦世代名称 GenerationDetail
-        await pool.query(`
-          INSERT INTO PokemonGenerationDetail(gid, language, name) VALUES
-          ${generationData.names.map(name =>
-            `('${gid}', '${name.language.name}', '${name.name}')`
-          ).join(', ')}
-          ON CONFLICT (gid, language) DO UPDATE SET
-          name = EXCLUDED.name;
-        `);
+        await Promise.all(generationData.names.map(async (name) => {
+          const escapedName = name.name.replace(/'/g, "''");
+          await pool.query(`INSERT INTO PokemonGenerationDetail(gid, language, name) VALUES ('${gid}', '${name.language.name}', '${escapedName}') ON CONFLICT (gid, language) DO UPDATE SET name = EXCLUDED.name;`);
+        }));
 
-        for (const versionGroupId of generationData.version_groups.map((version) => getId(version.url))) {
-          try {
-            const versionGroupRes = await api.versionGroup(versionGroupId);
-            const versionGroupData = versionGroupRes.data;
-            const versionIds = versionGroupData.versions.map((version) => getId(version.url));
-            // 宝可梦版本 Version
-            await pool.query(`
-              INSERT INTO PokemonVersion(vid, gid, brief) VALUES
-              ${versionGroupData.versions.map(version =>
-                `(${getId(version.url)}, '${gid}', '${version.name}')`
-              ).join(', ')}
-              ON CONFLICT (vid) DO UPDATE SET
-              gid = EXCLUDED.gid,
-              brief = EXCLUDED.brief;
-            `);
+        // 并发处理版本组
+        await Promise.all(generationData.version_groups.map(async (versionGroup) => {
+          const versionGroupId = getId(versionGroup.url);
+          const versionGroupRes = await api.versionGroup(versionGroupId);
+          const versionGroupData = versionGroupRes.data;
+
+          // 宝可梦版本 Version
+          await Promise.all(versionGroupData.versions.map(async (version) => {
+            const versionId = getId(version.url);
+            const escapedVersionName = version.name.replace(/'/g, "''");
+            await pool.query(`INSERT INTO PokemonVersion(vid, gid, brief) VALUES (${versionId}, '${gid}', '${escapedVersionName}') ON CONFLICT (vid) DO UPDATE SET gid = EXCLUDED.gid, brief = EXCLUDED.brief;`);
+
+            // 获取每个版本的详细信息并并发插入 PokemonVersionDetail
+            const versionRes = await api.version(versionId);
+            const versionData = versionRes.data;
+
             // 宝可梦版本名称 VersionDetail
-            const insertVersionDetailsPromises = versionIds.map(async (versionId) => {
-              const versionRes = await api.version(versionId);
-              const versionData = versionRes.data;
-              const versionDetailValues = versionData.names.map(name => {
-                // 将名称中的单引号转义
-                const escapedName = name.name.replace(/'/g, "''");
-                return `('${versionId}', '${name.language.name}', '${escapedName}')`;
-              }).join(', ');
-
-              if (versionDetailValues) {
-                // 如果结果不为空，则构建并执行SQL语句
-                const sql = `
-                  INSERT INTO PokemonVersionDetail(vid, language, name) VALUES
-                  ${versionDetailValues}
-                  ON CONFLICT (vid, language) DO UPDATE SET
-                  name = EXCLUDED.name;
-                `;
-                return pool.query(sql);
-              } else {
-                // 如果没有值要插入，返回一个解决的Promise
-                return Promise.resolve();
+            await Promise.all(versionData.names.map(async (name) => {
+              const escapedName = name.name.replace(/'/g, "''");
+              const queryValues = `('${versionId}', '${name.language.name}', '${escapedName}')`;
+              if (queryValues) {
+                return pool.query(`
+                INSERT INTO PokemonVersionDetail(vid, language, name) VALUES
+                (${versionId}, '${name.language.name}', '${escapedName}')
+                ON CONFLICT (vid, language) DO UPDATE SET
+                name = EXCLUDED.name;
+              `);
               }
-            });
+              return Promise.resolve();
+            }));
+          }));
 
-            // 等待所有插入操作完成
-            try {
-              await Promise.all(insertVersionDetailsPromises);
-              // console.log('\nAll version details inserted successfully.');
-            } catch (err) {
-              throw err;
-            }
-            
-            // 更新进度条
-            processedVersionGroups++;
-            if (mode!='errorFix') {
-              const progress = ((processedVersionGroups / totalVersionGroups) * 100).toFixed(2);
-              process.stdout.write(`\rProcessing version groups... ${progress}% [${processedVersionGroups}/${totalVersionGroups}]`);
-            }
-            else {
-              process.stdout.write(`\rFixing version groups... [${processedVersionGroups}/~]`);
-            }
-          } 
-          catch (err) {
-            // console.error(`\nFailed to update version group ${versionGroupId}:`, err);
-            // console.log(`\nFailed to update version group ${versionGroupId}`);
-            throw err;
+          processedVersionGroups++;
+          if (mode !== 'errorFix') {
+            const progress = ((processedVersionGroups / totalVersionGroups) * 100).toFixed(2);
+            process.stdout.write(`\rProcessing version groups... ${progress}% [${processedVersionGroups}/${totalVersionGroups}]`);
+          } else {
+            process.stdout.write(`\rFixing generation-${gid} version groups... [${processedVersionGroups}/~]`);
           }
-        }
+        }));
+
       } catch (err) {
-        // console.error(`Failed to update generation ${gid}:`, err);
-        if (mode!='errorFix') console.log(`\nFailed to update generation ${gid}`);
+        if (mode !== 'errorFix') console.log(`\nFailed to update generation ${gid}`);
         errorGeneration.push(gid);
-        await updateErrorJson('Generation', errorGeneration, true);
       }
-    }
-    if (mode!='errorFix') console.log("\nGeneration data inserted successfully.");
+    }));
+
+    if (mode !== 'errorFix') console.log("\nGeneration data inserted successfully.");
   } catch (err) {
-    if (mode!='errorFix') console.error('Error updating generations:', err);
+    if (mode !== 'errorFix') console.error('Error updating generations:', err);
   }
-  await updateErrorJson('Generation', errorGeneration, mode=='errorFix' || !errorGeneration.length);
+  await updateErrorJson('Generation', errorGeneration, mode == 'errorFix' || !errorGeneration.length);
 
   return errorGeneration;
 }
@@ -396,8 +378,8 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
       pokemonIds = pokemons.map((pokemon) => getId(pokemon.url));
     }
 
-    // 每次并发 20 个请求
-    const chunkSize = 20;
+    // 每次并发 60 个请求
+    const chunkSize = 60;
     for (let i = 0; i < total; i += chunkSize) {
       const chunk = pokemonIds.slice(i, i + chunkSize);
       await Promise.all(chunk.map(pid => processPokemonId(pid)));
@@ -421,7 +403,8 @@ async function main() {
 
   // await updateLanguages(pool);
   // await updateTypes(pool);
-  await updateGeneration(pool);
+  // await updateGeneration(pool);
+
   // await updatePokemon(pool);
   await updateErrorKey(pool);
 
