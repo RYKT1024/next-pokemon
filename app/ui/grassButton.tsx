@@ -29,7 +29,7 @@ export default function GrassButton({className}: {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [])
+  }, [handleKeyPress])
 
   return (
     <div className={`flex items-center cursor-pointer ${className}`} onClick={randomRedirect}>

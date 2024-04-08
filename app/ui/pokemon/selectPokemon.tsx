@@ -3,7 +3,7 @@
 import { addPokemon } from "../../lib/action";
 import { useEffect } from "react";
 
-export default function selectPokemon({id, className, sKey}: {
+export default function SelectPokemon({id, className, sKey}: {
   id:string, className?:string, sKey?:string
 }){
   const onClickHandler = () => {
@@ -25,7 +25,7 @@ export default function selectPokemon({id, className, sKey}: {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [])
+  }, [handleKeyPress])
   return (
     <button className={`bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded ${className}`}
                     onClick={onClickHandler}>选择</button>

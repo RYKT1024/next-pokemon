@@ -24,7 +24,7 @@ export default function PokemonButton({ id, children, sKey }: {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     }
-  },[])
+  },[handleKeyPress])
   return (
     <Link   className="bg-blue-500 hover:bg-blue-600 hover:text-gray-100 text-white font-bold py-2 px-4 rounded"
             href={`/pokemon/${id}`}
