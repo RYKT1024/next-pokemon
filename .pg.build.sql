@@ -93,13 +93,15 @@ CREATE TABLE PokemonEvolutionChain (
 CREATE TABLE PokemonEvolution (     
     eid         SERIAL PRIMARY KEY,
     ecid        INTEGER NOT NULL REFERENCES PokemonEvolutionChain(ecid),
-    toEcid      INTEGER NOT NULL REFERENCES PokemonEvolutionChain(ecid),
+    sid         INTEGER NOT NULL REFERENCES PokemonSpecie(sid),
+    toSid       INTEGER NOT NULL REFERENCES PokemonSpecie(sid),
     
-    UNIQUE(ecid, toEcid)
+    UNIQUE(sid, toSid)
 );
 
 CREATE INDEX idx_pokemonevolution_ecid ON PokemonEvolution(ecid);
-CREATE INDEX idx_pokemonevolution_toEcid ON PokemonEvolution(toEcid);
+CREATE INDEX idx_pokemonevolution_sid ON PokemonEvolution(sid);
+CREATE INDEX idx_pokemonevolution_toSid ON PokemonEvolution(toSid);
 
 CREATE TABLE PokemonGenus (
     gid         SERIAL PRIMARY KEY,
@@ -347,6 +349,7 @@ CREATE INDEX idx_pokemonabilitylink_pid ON PokemonAbilityLink(pid);
 
 CREATE TABLE PokemonItemPocket (
     ipid        SERIAL PRIMARY KEY,
+    brief       VARCHAR(10) NOT NULL UNIQUE,
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP   
 );
 
@@ -365,7 +368,7 @@ CREATE TABLE PokemonItem (
     iid         SERIAL PRIMARY KEY,
     ipid        INTEGER NOT NULL REFERENCES PokemonItemPocket(ipid),
     cost        INTEGER NOT NULL,
-    url         VARCHAR(256)
+    url         VARCHAR(256) NOT NULL
 );
 
 CREATE INDEX idx_pokemonitem_ipid ON PokemonItem(ipid);

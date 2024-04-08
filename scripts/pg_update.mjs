@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import pg from 'pg';
+import pLimit from 'p-limit';
 
 import { api } from './pokeapi.mjs'
 import { readFile, writeFile } from 'node:fs/promises';
@@ -58,9 +59,8 @@ async function updateErrorJson(errorKey, errorValues, silent=false) {
   }
   // 将更新后的对象写回 error.json 文件
   await writeFile('scripts/error.json', JSON.stringify(errorData, null, 2));
-  if (!silent) console.log(`Error ${errorKey} have been written to scripts/error.json.`);
+  if (!silent) console.log(`\nError ${errorKey} have been written to scripts/error.json.`);
 }
-
 
 async function updateErrorKey(pool, errorKey = 'all', silent = false, depth = 0) {
   const data = await readFile(`scripts/error.json`, 'utf8');
@@ -83,6 +83,15 @@ async function updateErrorKey(pool, errorKey = 'all', silent = false, depth = 0)
           case 'Move':
             _errorValues = await updateMove(pool, errorValues, 'errorFix');
             errorData[errorKey] = _errorValues;
+            break;
+          case 'EvolutionChain':
+            _errorValues = await updateEvolutionChain(pool, errorValues, 'errorFix');
+            errorData[errorKey] = _errorValues;
+            break;
+          case 'Item':
+            _errorValues = await updateItem(pool, errorValues, 'errorFix');
+            errorData[errorKey] = _errorValues;
+            break;
         }
         
         if (errorData[errorKey].length) {
@@ -115,8 +124,38 @@ async function updateErrorKey(pool, errorKey = 'all', silent = false, depth = 0)
   }
 }
 
-
+// 待更新： 纠错、并发type
 async function updateCommons(pool) {
+  try {
+    // 宝可梦物品类型
+    const itemPocketsRes = await api.itemPocket('');
+    const itemPockets = itemPocketsRes.data.results;
+    await pool.query(`
+      INSERT INTO PokemonItemPocket(ipid, brief) VALUES
+      ${itemPockets.map(itemPoket =>
+        `('${getId(itemPoket.url)}', '${itemPoket.name}')`
+      ).join(', ')}
+      ON CONFLICT (brief) DO NOTHING;
+    `);
+    // 宝可梦物品类型名称
+    const itemPocketIds = itemPockets.map(itemPoket => getId(itemPoket.url));
+    await Promise.all(itemPocketIds.map(async (itemPoketId) => {
+      const itemPoketRes = await api.itemPocket(itemPoketId);
+      const itemPoketData = itemPoketRes.data;
+      await pool.query(`
+        INSERT INTO PokemonItemPocketDetail(ipid, language, name) VALUES
+        ${itemPoketData.names.map(name =>
+          `('${itemPoketId}', '${name.language.name}', '${name.name.replace(/'/g, "''")}')`
+        ).join(', ')}
+        ON CONFLICT (ipid, language) DO UPDATE SET
+        name = EXCLUDED.name;
+      `);
+    }))
+    console.log("ItemPokets inserted successfully.");
+  }
+  catch (err) {
+    console.error('Error updating ItemPokets:', err);
+  }
   try {
     // 宝可梦叫声类型 CrieType
     await pool.query(`
@@ -222,7 +261,6 @@ async function updateCommons(pool) {
   catch (err) {
     console.error('Error updating colors:', err);
   }
-  // 待修改并发
   try {
     const res = await api.type('');
     const types = res.data.results;
@@ -380,7 +418,8 @@ async function updateGeneration(pool, generations=[], mode='default') {
           }
         }));
 
-      } catch (err) {
+      } 
+      catch (err) {
         if (mode !== 'errorFix') console.log(`\nFailed to update generation ${gid}`);
         // console.error(err);
         errorGeneration.push(gid);
@@ -388,12 +427,14 @@ async function updateGeneration(pool, generations=[], mode='default') {
     }));
 
     if (mode !== 'errorFix') console.log("\nGeneration data inserted successfully.");
-  } catch (err) {
+  } 
+  catch (err) {
     if (mode !== 'errorFix') console.error('Error updating generations:', err);
+  } 
+  finally {
+    await updateErrorJson('Generation', errorGeneration, mode == 'errorFix' || !errorGeneration.length);
+    return errorGeneration;
   }
-  await updateErrorJson('Generation', errorGeneration, mode == 'errorFix' || !errorGeneration.length);
-
-  return errorGeneration;
 }
 
 async function updateMove(pool, moveIds=[], mode='default') {
@@ -416,9 +457,10 @@ async function updateMove(pool, moveIds=[], mode='default') {
     process.stdout.write(`${processContent} ${((processed / total) * 100).toFixed(2)}%  [${processed}/${total}]`);
   }
   const silent = mode=='default' ? false : true;
+  const limit = pLimit(60); // 设置并发限制为60
 
   // 异步函数处理单个 Move ID
-  async function processMoveId(mid) {
+  const processMoveId = (mid) => limit(async () => {
     try {
       const moveRes = await api.move(mid).catch(err => {
         throw new Error(`Failed to fetch move data: ${err.message}`);
@@ -478,9 +520,12 @@ async function updateMove(pool, moveIds=[], mode='default') {
       // console.error(`Failed to update Move ${mid}:`, error);
       if (!silent) console.error(`Failed to update Move ${mid}`);
       errorMids.push(mid); // 收集出错的pid
-      updateProcess();
     }
-  }
+    finally {
+      // 更新进度条
+      updateProcess(1);
+    }
+  });
 
   try {
     if (moveIds.length === 0) {
@@ -489,25 +534,115 @@ async function updateMove(pool, moveIds=[], mode='default') {
       const moves = movesRes.data.results;
       moveIds = moves.map((move) => getId(move.url));
     }
-    // 每次并发 60 个请求
-    const chunkSize = 60;
-    updateProcess();
-    for (let i = 0; i < total; i += chunkSize) {
-      const chunk = moveIds.slice(i, i + chunkSize);
-      await Promise.all(chunk.map(mid => processMoveId(mid)));
-      // 更新进度条
-      updateProcess(chunk.length);
-      // 更新 error.json 文件
-      await updateErrorJson('Move', errorMids, true);
-    }
+    // 创建Promise数组，并等待所有Promise完成
+    const tasks = moveIds.map(mid => processMoveId(mid));
+    await Promise.all(tasks);
     if (!silent) console.log('\nAll moves have been processed.');
   }
   catch (err) {
     if (!silent) console.error('Error updating moves:', err);
   }
+  finally {
+    await updateErrorJson('Move', errorMids, mode == 'errorFix' || !errorMids.length);
+    return errorMids;
+  }
+}
 
-  await updateErrorJson('Move', errorMids, mode == 'errorFix' || !errorMids.length);
-  return errorMids;
+async function updateItem(pool, itemIds=[], mode='default') {
+  const errorIids = [];
+  const total = await (async () => {
+    if (!itemIds.length) {
+      const itemRes = await api.item(`?limit=1`);
+      return itemRes.data.count;
+    }
+    else return itemIds.length;
+  })();
+  let processed = 0;
+  const processContent = mode=='default' ? 
+    'Updating Items...': 'Fixing Error Items...';
+  const updateProcess = (length = 0) => {
+    processed += length;
+    process.stdout.write('\x1b[2K\r');
+    process.stdout.write(`${processContent} ${((processed / total) * 100).toFixed(2)}%  [${processed}/${total}]`);
+  }
+  const silent = mode=='default' ? false : true;
+  const limit = pLimit(60); // 设置并发限制为60
+
+  // 异步函数处理单个 Item ID
+  const processItemId = (iid) => limit(async () => {
+    try {
+      const itemRes = await api.item(iid);
+      const data = itemRes.data;
+      const cid = getId(data.category.url);
+      const itemCategoryRes = await api.itemCategory(cid);
+      const itemCategoryData = itemCategoryRes.data;
+      const ipid = getId(itemCategoryData.pocket.url);
+      const url = data.sprites.default ? data.sprites.default : 'null';
+      const cost = data.cost ? data.cost : -1;
+      // 宝可梦道具 Item
+      await pool.query(`
+        INSERT INTO PokemonItem(iid, ipid, cost, url) VALUES
+        ('${iid}', '${ipid}', '${cost}', '${url}')
+        ON CONFLICT (iid) DO UPDATE SET
+        ipid = EXCLUDED.ipid, cost = EXCLUDED.cost, url = EXCLUDED.url;
+      `);
+
+      const names = data.names;
+      const itemDetailValue = names.map(name => {
+        const language = name.language.name;
+        const nameValue = name.name.replace(/'/g, "''");
+        let description = 'null';
+        const textEntries = data.flavor_text_entries;
+        if (textEntries.length) {
+          const texts = textEntries.filter(textEntry => textEntry.language.name === language);
+          const text = texts.length ? texts[texts.length-1] : false;
+          if (text) {
+            description = text.text.replace(/'/g, "''");
+          }
+        }
+        return `('${iid}', '${language}', '${nameValue}', '${description}')`;
+      });
+      if (!itemDetailValue.length) return Promise.resolve();
+      // 宝可梦道具名称 ItemDetail
+      await pool.query(`
+        INSERT INTO PokemonItemDetail(iid, language, name, description) VALUES
+        ${itemDetailValue.join(",")}
+        ON CONFLICT (iid, language) DO UPDATE SET
+        name = EXCLUDED.name, description = EXCLUDED.description;
+      `);
+    }
+    catch (error) {
+      process.stdout.write('\x1b[2K\r');
+      // console.error(`Failed to update Item ${iid}:`, error);
+      if (!silent) console.error(`Failed to update Item ${iid}`);
+      errorIids.push(iid); // 收集出错的iid
+    }
+    finally {
+      // 更新进度条
+      updateProcess(1);
+    }
+  });
+
+  try {
+    if (itemIds.length === 0) {
+      // 获取全部 Item ID
+      const itemsRes = await api.item(`?limit=${total}`);
+      const items = itemsRes.data.results;
+      itemIds = items.map((item) => getId(item.url));
+    }
+    // 创建Promise数组，并等待所有Promise完成
+    const tasks = itemIds.map(iid => processItemId(iid));
+    await Promise.all(tasks);
+
+    if (!silent) console.log('\nAll items have been processed.');
+  }
+  catch (err) {
+    if (!silent) console.error('Error updating items:', err);
+  }
+  finally {
+    await updateErrorJson('Item', errorIids, mode == 'errorFix' || !errorIids.length);
+    return errorIids;
+  }
 }
 
 async function updatePokemon(pool, pokemonIds=[], mode='default') {
@@ -530,9 +665,10 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
     process.stdout.write(`${processContent} ${((processed / total) * 100).toFixed(2)}%  [${processed}/${total}]`);
   }
   const silent = mode=='default' ? false : true;
+  const limit = pLimit(60); // 设置并发限制为60
 
-  // 异步函数处理单个 Pokemon ID
-  async function processPokemonId(pid) {
+  // 异步处理单个 Pokemon ID
+  const processPokemonId = (pid) => limit(async () => {
     try {
       const pokemonRes = await api.pokemon(pid);
       const data = pokemonRes.data;
@@ -702,18 +838,36 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
           url = EXCLUDED.url;
         `);
 
+      // 宝可梦物品 ItemLink
+      const itemIds = data.held_items.map(item => getId(item.item.url));
+      if (itemIds.length) 
+        await pool.query(`
+          INSERT INTO PokemonItemLink(pid, iid) VALUES
+          ${itemIds.map(iid =>
+            `('${pid}', '${iid}')`
+          ).join(', ')}
+          ON CONFLICT (pid, iid) DO NOTHING;
+        `);
+
       // 宝可梦招式关系 MoveLink
       const moves = data.moves;
       const moveLinkValues = moves.map(move => {
         const mid = getId(move.move.url);
         const versionGroupDetails = move.version_group_details;
-        let level = 0;
-        // 获取最高的学习等级
-        for (let i = 0; i < versionGroupDetails.length; i++) {
-          if (versionGroupDetails[i].level_learned_at > level) {
-            level = versionGroupDetails[i].level_learned_at;
+        const level = (() => {
+          if (versionGroupDetails.length && 
+            versionGroupDetails[versionGroupDetails.length-1].move_learn_method.name!="level-up")
+            return -1;  // 非等级学习招式
+          let level = 0;
+          // 获取最高的学习等级
+          for (let i = 0; i < versionGroupDetails.length; i++) {
+            if (versionGroupDetails[i].level_learned_at > level) {
+              level = versionGroupDetails[i].level_learned_at;
+            }
           }
-        }
+          return level;
+        })()
+        
         return `('${pid}', '${mid}', '${level}')`;
       });
       if (moveLinkValues.length) {
@@ -777,9 +931,12 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
       // console.error(`Failed to update Pokemon ${pid}:`, error);
       if (!silent) console.error(`Failed to update Pokemon ${pid}`);
       errorPids.push(pid); // 收集出错的pid
-      updateProcess();
     }
-  }
+    finally {
+      // 更新进度条
+      updateProcess(1)
+    }
+  });
 
   try {
     if (pokemonIds.length === 0) {
@@ -788,28 +945,105 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
       const pokemons = pokemonsRes.data.results;
       pokemonIds = pokemons.map((pokemon) => getId(pokemon.url));
     }
-
-    // 每次并发 60 个请求
-    const chunkSize = 60;
-    updateProcess();
-    for (let i = 0; i < total; i += chunkSize) {
-      const chunk = pokemonIds.slice(i, i + chunkSize);
-      await Promise.all(chunk.map(pid => processPokemonId(pid)));
-      // 更新进度条
-      updateProcess(chunk.length);
-      // 更新 error.json 文件
-      await updateErrorJson('Pokemon', errorPids, true);
-    }
+    // 创建Promise数组，并等待所有Promise完成
+    const tasks = pokemonIds.map(pid => processPokemonId(pid));
+    await Promise.all(tasks);
 
     if (!silent) console.log('\nAll pokemons have been processed.');
   } 
   catch (err) {
     if (!silent) console.error('Error updating pokemon:', err);
   }
+  finally {
+    await updateErrorJson('Pokemon', errorPids, mode == 'errorFix' || !errorPids.length);
+    return errorPids
+  }
+}
 
-  if (!silent) console.log(`Error Pokemon have been written to scripts/error.json.`);
-  await updateErrorJson('Pokemon', errorPids, true);
-  return errorPids
+async function updateEvolutionChain(pool, ecIds=[], mode='default') {
+  let errorEcids = [];
+  const total = await (async () => {
+    if(ecIds.length)
+      return ecIds.length;
+    const res = await pool.query('SELECT COUNT(*) FROM PokemonEvolutionChain');
+    return res.rows[0].count;
+  })()
+  let processed = 0;
+  const processContent = (() => {
+    if (mode=='default') return 'Updating EvolutionChains...';
+    else return 'Fixing Error EvolutionChains...';
+  })()
+  const updateProcess = (length = 0) => {
+    processed += length;
+    process.stdout.write('\x1b[2K\r');
+    process.stdout.write(`${processContent} ${((processed / total) * 100).toFixed(2)}%  [${processed}/${total}]`);
+  }
+  const silent = mode=='default' ? false : true;
+  const limit = pLimit(60);  // 每次并发 60 个请求
+
+  // 异步处理单个 EvolutionChainID
+  const processEvolutionChainId = (ecid) => limit(async () => {
+    try {
+      const res = await api.evolutionChain(ecid);
+      const chain = res.data.chain;
+      // 进化关系数组
+      const evolutionPairs = ((evolutionChains) => {
+        let evolutionPairs = [];
+        function traverse(chain) {
+          // 如果当前阶段有演化结果
+          if (chain.evolves_to && chain.evolves_to.length) {
+            // 对于每一个可能的演化结果
+            chain.evolves_to.forEach(nextChain => {
+              // 将当前宝可梦和下一阶段宝可梦的名称配对
+              evolutionPairs.push([getId(chain.species.url), getId(nextChain.species.url)]);
+              // 递归遍历下一阶段的演化结果
+              traverse(nextChain);
+            });
+          }
+        }
+        // 从演化链的最初阶段开始递归遍历
+        traverse(evolutionChains);
+        return evolutionPairs;
+      })(chain);
+      if (!evolutionPairs.length) return Promise.resolve();
+      // 宝可梦进化关系 Evolution
+      await pool.query(`
+        INSERT INTO PokemonEvolution(ecid, sid, toSid) VALUES
+        ${evolutionPairs.map(pair => `('${ecid}', '${getId(pair[0])}', '${getId(pair[1])}')`).join(', ')}
+        ON CONFLICT (sid, toSid) DO NOTHING;
+      `);
+    }
+    catch (err) {
+      process.stdout.write('\x1b[2K\r');
+      // console.error(`Failed to update EvolutionChain ${ecid}:`, err);
+      if (!silent) console.error(`Error updating evolution chain ${ecid}`);
+      errorEcids.push(ecid);
+    }
+    finally {
+      // 更新进度条
+      updateProcess(1)
+    }
+  });
+
+  try {
+    if (ecIds.length === 0) {
+      // 获取全部 EvolutionChain ID
+      const evolutionChainsRes = await pool.query('SELECT ecid FROM PokemonEvolutionChain');
+      ecIds = evolutionChainsRes.rows.map((ec) => ec.ecid);
+    }
+    // 创建Promise数组，并等待所有Promise完成
+    const tasks = ecIds.map(ecid => processEvolutionChainId(ecid));
+    await Promise.all(tasks);
+    if (!silent) console.log('\nAll evolution chains have been processed.');
+  }
+  catch (err) {
+    if (!silent) console.error('Error updating evolution chains:', err);
+  }
+  finally {
+    if (!silent) console.log(`Error EvolutionChain have been written to scripts/error.json.`);
+    await updateErrorJson('EvolutionChain', errorEcids, mode == 'errorFix' || !errorEcids.length);
+    return errorEcids
+  }
 }
 
 async function main() {
@@ -819,7 +1053,9 @@ async function main() {
   // await updateCommons(pool);
   // await updateGeneration(pool);
   // await updateMove(pool);
+  // await updateItem(pool);
   await updatePokemon(pool);
+  // await updateEvolutionChain(pool);
   await updateErrorKey(pool);
 
 
@@ -828,4 +1064,4 @@ async function main() {
 
 main().catch((err) => console.error(err));
 
-// TODO: 进化链 特性 物品
+// TODO: 特性
