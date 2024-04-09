@@ -714,13 +714,14 @@ async function updatePokemon(pool, pokemonIds=[], mode='default') {
 
       // 宝可梦种族 Specie
       await pool.query(`
-        INSERT INTO PokemonSpecie(sid, ecid, gid, generation, cid) VALUES 
-        ('${sid}', '${ecid}', '${gid}', '${getId(sdata.generation.url)}', '${getId(sdata.color.url)}')
+        INSERT INTO PokemonSpecie(sid, ecid, gid, generation, cid, captureRate) VALUES 
+        ('${sid}', '${ecid}', '${gid}', '${getId(sdata.generation.url)}', '${getId(sdata.color.url)}', '${sdata.capture_rate}')
         ON CONFLICT (sid) DO UPDATE SET 
         ecid = EXCLUDED.ecid,
         gid = EXCLUDED.gid,
         generation = EXCLUDED.generation,
-        cid = EXCLUDED.cid;
+        cid = EXCLUDED.cid,
+        captureRate = EXCLUDED.captureRate;
       `);
 
       // 宝可梦种族信息 SpecieDetail

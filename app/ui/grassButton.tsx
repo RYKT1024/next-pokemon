@@ -13,15 +13,14 @@ export default function GrassButton({className}: {
 
   const sKey = 'KeyQ'
 
-  // 处理键盘按键事件
-  const handleKeyPress = (event: KeyboardEvent) => {
-    if(sKey !== undefined && event.code === sKey) {
-      event.preventDefault();
-      randomRedirect()
-    }
-  };
-
   useEffect(() => {
+    // 处理键盘按键事件
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if(sKey !== undefined && event.code === sKey) {
+        event.preventDefault();
+        randomRedirect()
+      }
+    };
     // 添加键盘事件监听器
     window.addEventListener('keydown', handleKeyPress);
 
@@ -29,7 +28,7 @@ export default function GrassButton({className}: {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [handleKeyPress])
+  }, [])
 
   return (
     <div className={`flex items-center cursor-pointer ${className}`} onClick={randomRedirect}>

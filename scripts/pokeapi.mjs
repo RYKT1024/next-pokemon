@@ -36,6 +36,10 @@ function getPokemonColorApi(colorId) {
   return axios.get(`https://pokeapi.co/api/v2/pokemon-color/${colorId}`);
 }
 
+function getPokemonHabitat(habitatId) {
+  return axios.get(`https://pokeapi.co/api/v2/pokemon-habitat/${habitatId}`);
+}
+
 function getPokemonStatApi(statId) {
   return axios.get(`https://pokeapi.co/api/v2/stat/${statId}`);
 }
@@ -78,6 +82,7 @@ export const api = {
   'form': getPokemonFormApi,
   'type': getPokemonTypeApi,
   'color': getPokemonColorApi,
+  'habitat': getPokemonHabitat,
   'stat': getPokemonStatApi,
   'ability': getPokemonAbilityApi,
   'evolutionChain': getPokemonEvolutionChainApi,

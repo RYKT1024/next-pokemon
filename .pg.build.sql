@@ -2,10 +2,23 @@ CREATE TABLE Languages (
     name        VARCHAR(10) PRIMARY KEY
 );
 
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+   NEW.UpdatedAt = CURRENT_TIMESTAMP;
+   RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TABLE PokemonGeneration (
     gid         SERIAL PRIMARY KEY,
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TRIGGER update_pokemongeneration_updatedat_before_update
+BEFORE UPDATE ON PokemonGeneration
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TABLE PokemonGenerationDetail (
     gdid        SERIAL PRIMARY KEY,
@@ -62,6 +75,11 @@ CREATE TABLE PokemonType (
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TRIGGER update_pokemontype_updatedat_before_update
+BEFORE UPDATE ON PokemonType
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TABLE PokemonTypeRelation (
     tlid        SERIAL PRIMARY KEY,
     tid         SMALLINT NOT NULL REFERENCES PokemonType(tid),
@@ -89,6 +107,11 @@ CREATE TABLE PokemonEvolutionChain (
     ecid        SERIAL PRIMARY KEY,
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TRIGGER update_pokemonevolutionchain_updatedat_before_update
+BEFORE UPDATE ON PokemonEvolutionChain
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TABLE PokemonEvolution (     
     eid         SERIAL PRIMARY KEY,
@@ -137,18 +160,23 @@ CREATE TABLE PokemonColorDetail (
 
 CREATE INDEX idx_pokemoncolordetail_cid_language ON PokemonColorDetail(cid, language);
 
-<<<<
 CREATE TABLE PokemonSpecie (
     sid         SERIAL PRIMARY KEY,
     ecid        INTEGER NOT NULL REFERENCES PokemonEvolutionChain(ecid),
     gid         INTEGER NOT NULL REFERENCES PokemonGenus(gid),
     cid         INTEGER NOT NULL REFERENCES PokemonColor(cid),
     generation  INTEGER NOT NULL REFERENCES PokemonGeneration(gid),
+    captureRate INTEGER NOT NULL,
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_pokemonspecie_ecid ON PokemonSpecie(ecid);
+CREATE INDEX idx_pokemonspecie_ecid ON PokemonSpecise(ecid);
 CREATE INDEX idx_pokemonspecie_generation ON PokemonSpecie(generation);
+
+CREATE TRIGGER update_pokemonspecie_updatedat_before_update
+BEFORE UPDATE ON PokemonSpecie
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TABLE PokemonSpecieDetail (
     sdid        SERIAL PRIMARY KEY,
@@ -177,6 +205,11 @@ CREATE TABLE Pokemon (
     sid         INTEGER NOT NULL REFERENCES PokemonSpecie(sid),
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TRIGGER update_pokemon_updatedat_before_update
+BEFORE UPDATE ON Pokemon
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TABLE PokemonDetail (
     did         SERIAL PRIMARY KEY,
@@ -241,6 +274,11 @@ CREATE TABLE PokemonMove (
     accuracy    INTEGER NOT NULL,
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TRIGGER update_pokemonmove_updatedat_before_update
+BEFORE UPDATE ON PokemonMove
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TABLE PokemonMoveDetail (
     mdid        SERIAL PRIMARY KEY,
@@ -325,6 +363,11 @@ CREATE TABLE PokemonAbility (
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TRIGGER update_pokemonability_updatedat_before_update
+BEFORE UPDATE ON PokemonAbility
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TABLE PokemonAbilityDetail (
     adid        SERIAL PRIMARY KEY,
     aid         INTEGER NOT NULL REFERENCES PokemonAbility(aid),
@@ -352,6 +395,11 @@ CREATE TABLE PokemonItemPocket (
     brief       VARCHAR(10) NOT NULL UNIQUE,
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP   
 );
+
+CREATE TRIGGER update_pokemonitempocket_updatedat_before_update
+BEFORE UPDATE ON PokemonItemPocket
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TABLE PokemonItemPocketDetail (
     ipdid       SERIAL PRIMARY KEY,

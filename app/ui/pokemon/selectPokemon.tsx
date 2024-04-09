@@ -9,15 +9,15 @@ export default function SelectPokemon({id, className, sKey}: {
   const onClickHandler = () => {
     addPokemon('0001', id)
   }
-  // 处理键盘按键事件
+
+  useEffect(() => {
+    // 处理键盘按键事件
   const handleKeyPress = (event: KeyboardEvent) => {
     if(sKey && event.code === sKey) {
       event.preventDefault();
       onClickHandler()
     }
   };
-
-  useEffect(() => {
     // 添加键盘事件监听器
     window.addEventListener('keydown', handleKeyPress);
 
@@ -25,7 +25,7 @@ export default function SelectPokemon({id, className, sKey}: {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [handleKeyPress])
+  }, [])
   return (
     <button className={`bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded ${className}`}
                     onClick={onClickHandler}>选择</button>
