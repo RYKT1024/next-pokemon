@@ -1,17 +1,16 @@
 'use client'
 
-import { getTrainerInfo } from "@/app/lib/action"
 import { useEffect, useState } from "react"
-import { TrainerInfo } from "@/app/lib/types"
+import { TrainerDataType } from "@/app/lib/types"
+import { fetchTrainerData } from "@/app/lib/data";
 
-export default function PokebagContent() {
-  const [trainerInfo, setTrainerInfo] = useState<null | TrainerInfo>(null);
+export default function PokebagContent({config}: {config: any}) {
+  const [trainerInfo, setTrainerInfo] = useState<TrainerDataType | null>(null);
 
   useEffect(() => {
-    const uid = "0001";
-    getTrainerInfo(uid).then(info => {
-      console.log(info);
-      setTrainerInfo(info);
+    const tid = 1;
+    fetchTrainerData(tid).then((data) => {
+      setTrainerInfo(data);
     });
   }, []);
 
@@ -19,6 +18,11 @@ export default function PokebagContent() {
     <div>
       {trainerInfo ? (
         <div>
+          <p>showPokemon:{(config.localShowPokemon).toString()}</p>
+          <button onClick={() => {
+            config.setLocalShowPokemon(!config.localShowPokemon);
+            location.reload();
+          }}>change</button>
           <p>训练师信息:</p>
           <p>{JSON.stringify(trainerInfo)}</p>
         </div>

@@ -237,6 +237,8 @@ CREATE TABLE PokemonImageType (
     brief       VARCHAR(30) NOT NULL UNIQUE
 );
 
+CREATE INDEX idx_pokemonimagetype_brief ON PokemonImageType(brief);
+
 CREATE TABLE PokemonImage (
     iid         SERIAL PRIMARY KEY,
     pid         INTEGER NOT NULL REFERENCES Pokemon(pid),
@@ -456,6 +458,8 @@ CREATE TABLE Trainers (
     UNIQUE(name, userid)
 );
 
+CREATE INDEX idx_trainers_name ON Trainers(name, userid);
+
 CREATE TABLE Pokemons (
     pokemonid   SERIAL PRIMARY KEY,
     tid         INTEGER NOT NULL REFERENCES Trainers(tid) ON DELETE CASCADE,
@@ -468,3 +472,8 @@ CREATE TABLE Pokemons (
 );
 
 CREATE INDEX idx_pokemons_tid ON Pokemons(tid);
+
+CREATE TRIGGER update_pokemons_updatedat_before_update
+BEFORE UPDATE ON Pokemons
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();

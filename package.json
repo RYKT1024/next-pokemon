@@ -20,7 +20,8 @@
     "react-dom": "^18",
     "redis": "^4.6.13",
     "sharp": "^0.33.3",
-    "swr": "^2.2.5"
+    "swr": "^2.2.5",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@types/node": "^20",

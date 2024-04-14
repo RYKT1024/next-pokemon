@@ -9,10 +9,36 @@ export function generateStaticParams() {
   }));
 }
 
-export default function Page({ params }: {
+async function checkId({ params }: {
   params: { id: string } 
 }) {
   const { id } = params;
+  // console.log(id);
+
+  const numId = Number(id);
+  if (numId == 0) {
+    return false
+  }
+  return true;
+}
+
+export default async function Page({ params }: {
+  params: { id: string } 
+}) {
+  const { id } = params;
+
+  const isValid = await checkId({ params });
+  if (!isValid) {
+    return (
+      <div className="h-screen">
+        <p className="text-3xl font-bold pt-4 pl-4 select-none">{"Pokémon #" + id}</p>
+        <p className="text-3xl font-bold pt-4 pl-4 select-none">{"Invalid Pokémon ID"}</p>
+        
+      </div>
+
+    )
+  }
+
   return (
     <>
       <div className="relative h-screen">
