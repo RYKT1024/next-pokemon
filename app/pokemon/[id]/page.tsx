@@ -4,7 +4,7 @@ import Pokebag from "@/app/ui/pokebag/pokebag";
 import GrassButton from "@/app/ui/grassButton";
 
 export function generateStaticParams() {
-  return Array.from({ length: 10 }, (_, index) => ({
+  return Array.from({ length: 1025 }, (_, index) => ({
     id: `${1 + index}`
   }));
 }

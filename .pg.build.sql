@@ -113,19 +113,6 @@ BEFORE UPDATE ON PokemonEvolutionChain
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TABLE PokemonEvolution (     
-    eid         SERIAL PRIMARY KEY,
-    ecid        INTEGER NOT NULL REFERENCES PokemonEvolutionChain(ecid),
-    sid         INTEGER NOT NULL REFERENCES PokemonSpecie(sid),
-    toSid       INTEGER NOT NULL REFERENCES PokemonSpecie(sid),
-    
-    UNIQUE(sid, toSid)
-);
-
-CREATE INDEX idx_pokemonevolution_ecid ON PokemonEvolution(ecid);
-CREATE INDEX idx_pokemonevolution_sid ON PokemonEvolution(sid);
-CREATE INDEX idx_pokemonevolution_toSid ON PokemonEvolution(toSid);
-
 CREATE TABLE PokemonGenus (
     gid         SERIAL PRIMARY KEY,
     brief       VARCHAR(30) NOT NULL UNIQUE
@@ -199,6 +186,19 @@ CREATE TABLE PokemonSpecieText (
 );
 
 CREATE INDEX idx_pokemonspecietext_sid_language ON PokemonSpecieText(sid, language);
+
+CREATE TABLE PokemonEvolution (     
+    eid         SERIAL PRIMARY KEY,
+    ecid        INTEGER NOT NULL REFERENCES PokemonEvolutionChain(ecid),
+    sid         INTEGER NOT NULL REFERENCES PokemonSpecie(sid),
+    toSid       INTEGER NOT NULL REFERENCES PokemonSpecie(sid),
+    
+    UNIQUE(sid, toSid)
+);
+
+CREATE INDEX idx_pokemonevolution_ecid ON PokemonEvolution(ecid);
+CREATE INDEX idx_pokemonevolution_sid ON PokemonEvolution(sid);
+CREATE INDEX idx_pokemonevolution_toSid ON PokemonEvolution(toSid);
 
 CREATE TABLE Pokemon (
     pid         SERIAL PRIMARY KEY,
