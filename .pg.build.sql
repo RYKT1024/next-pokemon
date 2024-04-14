@@ -157,7 +157,7 @@ CREATE TABLE PokemonSpecie (
     UpdatedAt   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_pokemonspecie_ecid ON PokemonSpecise(ecid);
+CREATE INDEX idx_pokemonspecie_ecid ON PokemonSpecie(ecid);
 CREATE INDEX idx_pokemonspecie_generation ON PokemonSpecie(generation);
 
 CREATE TRIGGER update_pokemonspecie_updatedat_before_update

@@ -1050,13 +1050,13 @@ async function updateEvolutionChain(pool, ecIds=[], mode='default') {
 async function main() {
   const pool = new pg.Pool(pgconfig);
 
-  // await updateLanguages(pool);
-  // await updateCommons(pool);
-  // await updateGeneration(pool);
-  // await updateMove(pool);
-  // await updateItem(pool);
+  await updateLanguages(pool);
+  await updateCommons(pool);
+  await updateGeneration(pool);
+  await updateMove(pool);
+  await updateItem(pool);
   await updatePokemon(pool);
-  // await updateEvolutionChain(pool);
+  await updateEvolutionChain(pool);
   await updateErrorKey(pool);
 
 
