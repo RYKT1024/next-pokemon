@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState } from "react"
-import { TrainerDataType } from "@/app/lib/types"
-import { fetchTrainerData } from "@/app/lib/data";
+import { TrainerDataType } from "@/lib/types"
+import { fetchTrainerData } from "@/lib/data";
 
 export default function PokebagContent({config}: {config: any}) {
   const [trainerInfo, setTrainerInfo] = useState<TrainerDataType | null>(null);

@@ -1,17 +1,17 @@
 'use client'
 
-import { addPokemon } from "../../lib/action";
+import { addPokemon } from "@/lib/action";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function SelectPokemon({id, className, sKey, refresh}: {
-  id:string, className?:string, sKey?:string, refresh:any
+export default function SelectPokemon({id, className, sKey, setRefresh}: {
+  id:string, className?:string, sKey?:string, setRefresh:any
 }){
   const router = useRouter()
   const onClickHandler = () => {
     addPokemon(1, id).then(() => 
       // location.reload()
-    refresh(true)
+    setRefresh(true)
     )
   }
 

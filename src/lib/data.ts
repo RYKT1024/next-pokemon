@@ -91,6 +91,16 @@ export async function fetchPokemonFounded(tid:number, pid: string): Promise<numb
   catch (err) {
     console.error(err);
     return -1;
+  } 
+}
+
+export async function fetchPokemonIds(): Promise<Array<number>> {
+  try {
+    const res = await pool.query('SELECT pid FROM pokemon');
+    return res.rows.map((row: { pid: number }) => row.pid);
   }
-  
+  catch (err) {
+    console.error(err);
+    return [];
+  }
 }

@@ -30,7 +30,7 @@ export default function PokebagWindow({ isVisible, onClose, children }:{
   if (!isVisible) return null;
 
   return (
-    <div ref={ref} className="fixed right-5 top-5 w-96 h-144 bg-white border border-gray-200 shadow-lg rounded-xl">
+    <div ref={ref} className="fixed right-5 top-5 w-96 h-144 bg-white border border-gray-200 shadow-lg rounded-xl overflow-auto">
       <button onClick={onClose} className="absolute top-2 right-2 text-gray-600">关闭</button>
       {children}
     </div>

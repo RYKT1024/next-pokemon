@@ -4,11 +4,12 @@ import ImgButton from "../common/imgButton";
 import PokebagWindow from "./pokebagWindow";
 import PokebagContent from "./pokebagContent";
 import { useState, useEffect, useCallback } from "react";
-import useLocalStorage from "@/app/lib/local";
+import useLocalStorage from "@/lib/local";
 
 export default function Pokebag() {
   const [isWindowVisible, setWindowVisible] = useState(false);
   const [localShowPokemon, setLocalShowPokemon] = useLocalStorage("showPokemon", true)
+  const [language, setLanguage] = useLocalStorage<string>('language', 'en');
   
   const config = {localShowPokemon, setLocalShowPokemon}
 
@@ -33,7 +34,7 @@ export default function Pokebag() {
 
 
   return (
-    <div>
+    <div className="z-10">
       <ImgButton src='/pokebag.png' alt='打开宝可梦背包' onClick={toggleWindow}
                  width={56} height={56}
                  className="fixed top-5 right-5" buttonClassName="w-14 h-14"/>

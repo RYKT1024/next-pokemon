@@ -28,11 +28,12 @@ export default function PokemonButton({ id, children, sKey }: {
   },[sKey, id, router])
   if (numId>0 && numId<1000) return (
     <Link   className="bg-blue-500 hover:bg-blue-600 hover:text-gray-100 text-white font-bold py-2 px-4 rounded"
-            href={`/pokemon/${id}`}
+            href={`/play?id=${id}`}
+            draggable='false'
       >{children}</Link>
   )
   else return (
-    <span   className="bg-gray-500 text-white font-bold py-2 px-4 rounded cursor-not-allowed"
+    <span   className="bg-gray-500 text-white font-bold py-2 px-4 rounded cursor-not-allowed select-none"
       >{children}</span>
   )
 }
