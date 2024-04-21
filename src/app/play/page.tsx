@@ -3,17 +3,13 @@
 import Pokemon from "@/ui/pokemon/pokemon";
 import Pokebag from "@/ui/pokebag/pokebag";
 import GrassButton from "@/ui/grassButton";
-import { useState, useEffect, createContext, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchPokemonIds } from "@/lib/data";
 import { LocalGlobals } from "@/lib/types";
 
-interface GlobalContextType {
-  globals: LocalGlobals,
-  changeGlobals: (key:string, value:any) => void
-};
-export const GlobalContext = createContext<GlobalContextType | null>(null);
+import GlobalContext from "@/lib/context";
 
 function PokemonComponent() {
   const router = useRouter();

@@ -1,5 +1,5 @@
 'use client';
-import { revalidatePokemon } from "../../lib/action";
+import { revalidatePokemon } from "@/lib/action";
 
 export default function revalidateButton({numStr}: {
   numStr: string

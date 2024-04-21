@@ -1,9 +1,8 @@
 'use client'
 
-import { fetchPokemonIds } from "@/lib/data";
 import Image from "next/image";
-import { useState, useEffect, useContext } from "react";
-import { GlobalContext } from "@/app/play/page";
+import { useState, useEffect } from "react";
+import { useGlobalContext } from "@/lib/context";
 import { useRouter } from "next/navigation";
 import useLocalStorage from "@/lib/local";
 
@@ -14,13 +13,13 @@ export default function GrassButton({className}: {
   let randomPid: number;
   const [pid, setPid] = useState<number>(0)
   // 断言 useContext(GlobalContext) 非空
-  const globals = useContext(GlobalContext)!.globals;
+  const globals = useGlobalContext().globals;
   const [sKey, ] = useLocalStorage('grassButtonKey', 'KeyQ');
   const pids = globals.pokemonIds;
 
   const getRandomPid = () => {
     randomPid = pids[Math.floor(Math.random() * pids.length)];
-    setPid(randomPid)
+    setPid(randomPid);
   }
   
   const updatePokemon = () => {
@@ -40,8 +39,6 @@ export default function GrassButton({className}: {
       }
     };
 
-    getRandomPid()
-    router.prefetch(`/play?id=${pid}`)
     // 添加键盘事件监听器
     window.addEventListener('keydown', handleKeyPress);
 
@@ -51,6 +48,11 @@ export default function GrassButton({className}: {
       console.log('bye')
     };
   }, [])
+
+  useEffect(() => {
+    getRandomPid()
+    router.prefetch(`/play?id=${pid}`)
+  }, [pids])
 
   return (
     <div className={`flex items-center cursor-pointer ${className}`} onClick={updatePokemon}>
