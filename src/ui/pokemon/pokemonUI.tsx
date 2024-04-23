@@ -3,18 +3,21 @@
 import BlackWhiteImg from "@/ui/common/blackWhiteImg"
 import { fetchPokemonFounded, fetchPokemonImage } from "@/lib/data"
 import { useState, useEffect } from "react"
-import useLocalStorage from "@/lib/local"
+import { useLocalShowPokemon, useLocalShowPokemonKey } from "@/lib/local"
+import { useGlobalContext } from "@/lib/context"
 
 import Image from 'next/image'
 
-export default function PokemonUI({id, name, refresh, pkLoaded, className}: {
-  id:string, name: string, refresh: boolean, pkLoaded: boolean, className?: string
+export default function PokemonUI({id, name, className}: {
+  id:string, name: string, className?: string
 }) {
   const [img, setImg] = useState('') 
   const [showPokemon, setShowPokemon] = useState(false)
   const [loaded, setLoaded] = useState(false)
-  const [localShowPokemonKey,] = useLocalStorage<string>("showPokemonKey", "KeyP")
-  const [localShowPokemon,] = useLocalStorage<boolean>("showPokemon", true)
+  const [localShowPokemonKey,] = useLocalShowPokemonKey()
+  
+  const refresh = useGlobalContext().globals.refresh;
+  const [localShowPokemon, ] = useLocalShowPokemon([refresh])
 
   useEffect(() => {
     Promise.all([fetchPokemonFounded(1, id), fetchPokemonImage(id, 'front_default')]).then(([foundedRes, imgRes]) => {
@@ -22,21 +25,22 @@ export default function PokemonUI({id, name, refresh, pkLoaded, className}: {
       setImg(imgRes);
       setLoaded(true);
     })
-    // 处理键盘按键事件
+    return () => {
+      setLoaded(false);
+    };
+  }, [id, refresh, localShowPokemon]);
+
+  useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
       if(event.code === localShowPokemonKey) {
         setShowPokemon(prevShowPokemon => !prevShowPokemon);
       }
     };
-    // 添加键盘事件监听器
     window.addEventListener('keydown', handleKeyPress);
-
-    // 组件卸载时移除事件监听器
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
-      setLoaded(false);
     };
-  }, [id, img, refresh, localShowPokemonKey, localShowPokemon]);
+  }, [localShowPokemonKey])
   
   return (
     <div className={`${className} w-80 h-full rounded-3xl shadow-2xl bg-white flex flex-col items-center`}>
@@ -52,7 +56,7 @@ export default function PokemonUI({id, name, refresh, pkLoaded, className}: {
               </>
               ) : (
               <>
-                <p className='h-16 mt-4 text-3xl font-bold text-gray-800'>{pkLoaded ? name : ''}</p> 
+                <p className='h-16 mt-4 text-3xl font-bold text-gray-800'>{name}</p> 
                 <Image  className='w-64 h-64 select-none'
                         width={256} height={256}
                         src={img} alt={name} 

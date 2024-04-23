@@ -1,64 +1,53 @@
-'use client'
-
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useGlobalContext } from "@/lib/context";
 import { useRouter } from "next/navigation";
-import useLocalStorage from "@/lib/local";
+import { useLocalGrassButtonKey } from "@/lib/local";
 
 export default function GrassButton({className}: {
   className?: string
 }) {
-  const router = useRouter()
-  let randomPid: number;
-  const [pid, setPid] = useState<number>(0)
-  // 断言 useContext(GlobalContext) 非空
+  const router = useRouter();
+  const [pid, setPid] = useState<number>(0);
   const globals = useGlobalContext().globals;
-  const [sKey, ] = useLocalStorage('grassButtonKey', 'KeyQ');
+  const [sKey, ] = useLocalGrassButtonKey();
   const pids = globals.pokemonIds;
 
   const getRandomPid = () => {
-    randomPid = pids[Math.floor(Math.random() * pids.length)];
-    setPid(randomPid);
-  }
+    const newRandomPid = pids[Math.floor(Math.random() * pids.length)];
+    setPid(newRandomPid);
+  };
   
-  const updatePokemon = () => {
-    router.push(`/play?id=${pid}`)
-    getRandomPid()
-    router.prefetch(`/play?id=${pid}`)
-  }
+  useEffect(() => {
+    getRandomPid(); // 获取初始 randomPid
+    router.prefetch(`/play?id=${pid}`); // 预取初始 PID
+  }, [pids]); // 依赖于 pids 列表
 
   useEffect(() => {
-    // 处理键盘按键事件
     const handleKeyPress = (event: KeyboardEvent) => {
-      if(sKey !== undefined && event.code === sKey) {
+      if (sKey !== undefined && event.code === sKey) {
         event.preventDefault();
-        router.push(`/play?id=${randomPid}`)
-        getRandomPid()
-        router.prefetch(`/play?id=${randomPid}`)
+        getRandomPid(); // 更新 PID
+        router.push(`/play?id=${pid}`);
+        router.prefetch(`/play?id=${pid}`);
       }
     };
 
-    // 添加键盘事件监听器
     window.addEventListener('keydown', handleKeyPress);
-
-    // 组件卸载时移除事件监听器
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
-      console.log('bye')
     };
-  }, [])
-
-  useEffect(() => {
-    getRandomPid()
-    router.prefetch(`/play?id=${pid}`)
-  }, [pids])
+  }, [sKey, pid, router]); // 添加 PID 为依赖项
 
   return (
-    <div className={`flex items-center cursor-pointer ${className}`} onClick={updatePokemon}>
+    <div className={`flex items-center cursor-pointer ${className}`} onClick={() => {
+      getRandomPid(); // 点击时获取新的 PID
+      router.push(`/play?id=${pid}`);
+      router.prefetch(`/play?id=${pid}`);
+    }}>
       <Image src="/grass.png" alt="found pokemon"
                     width={56} height={56} />
       <p className="select-none text-green-700 text-xl mx-1 pt-1 font-semibold">探索草丛！</p>
     </div>
-  )
+  );
 }

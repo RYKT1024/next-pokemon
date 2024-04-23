@@ -3,12 +3,14 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { useGlobalContext } from "@/lib/context"
 
 export default function PokemonButton({ id, children, sKey }: {
   id: string, children: React.ReactNode, sKey?: string
 }) {
   const router = useRouter() 
   const numId = Number(id)
+  const pokemonIds = useGlobalContext().globals.pokemonIds
 
   useEffect(() => {
     // 处理键盘按键事件
@@ -26,13 +28,14 @@ export default function PokemonButton({ id, children, sKey }: {
       window.removeEventListener('keydown', handleKeyPress);
     }
   },[sKey, id, router])
-  if (numId>0 && numId<1000) return (
+
+  return (pokemonIds.includes(numId)) ?
+  (
     <Link   className="bg-blue-500 hover:bg-blue-600 hover:text-gray-100 text-white font-bold py-2 px-4 rounded"
             href={`/play?id=${id}`}
             draggable='false'
       >{children}</Link>
-  )
-  else return (
+  ) : (
     <span   className="bg-gray-500 text-white font-bold py-2 px-4 rounded cursor-not-allowed select-none"
       >{children}</span>
   )

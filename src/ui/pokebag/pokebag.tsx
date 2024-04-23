@@ -8,10 +8,7 @@ import useLocalStorage from "@/lib/local";
 
 export default function Pokebag() {
   const [isWindowVisible, setWindowVisible] = useState(false);
-  const [localShowPokemon, setLocalShowPokemon] = useLocalStorage("showPokemon", true)
   const [language, setLanguage] = useLocalStorage<string>('language', 'en');
-  
-  const config = {localShowPokemon, setLocalShowPokemon}
 
   // 使用useCallback来包裹toggleWindow函数
   const toggleWindow = useCallback(() => {
@@ -39,7 +36,7 @@ export default function Pokebag() {
                  width={56} height={56}
                  className="fixed top-5 right-5" buttonClassName="w-14 h-14"/>
       <PokebagWindow isVisible={isWindowVisible} onClose={toggleWindow}>
-        <PokebagContent config={config}/>
+        <PokebagContent />
       </PokebagWindow>
     </div>
   );

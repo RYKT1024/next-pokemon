@@ -3,15 +3,19 @@
 import { addPokemon } from "@/lib/action";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useGlobalContext } from "@/lib/context";
 
-export default function SelectPokemon({id, className, sKey, setRefresh}: {
-  id:string, className?:string, sKey?:string, setRefresh:any
+export default function SelectPokemon({id, className, sKey}: {
+  id:string, className?:string, sKey?:string
 }){
-  const router = useRouter()
+  const context = useGlobalContext();
+  const refresh = context.globals.refresh;
+  const setRefresh = () => context.changeGlobals('refresh', !refresh);
+  const router = useRouter();
   const onClickHandler = () => {
     addPokemon(1, id).then(() => 
       // location.reload()
-    setRefresh(true)
+    setRefresh()
     )
   }
 

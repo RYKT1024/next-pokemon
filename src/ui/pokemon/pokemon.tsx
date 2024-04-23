@@ -12,28 +12,22 @@ export default function Pokemon({id} : {
 }) {
 
   const [name, setName] = useState('');
-  const [refresh, setRefresh] = useState(false);
   const [language, setLanguage] = useLocalStorage<string>('language', 'zh-Hans');
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetchPokemonName(id, language).then((name) => {
       setName(name);
-      setLoaded(true);
     });
-    return () => {
-      setLoaded(false);
-    }
-  }, [id, refresh, language])
+  }, [id, language])
   
     return (
       <>
         <div className='pt-12 flex flex-col items-center'>
-          <PokemonUI id={id} name={name} refresh={refresh} pkLoaded={loaded}/>
+          <PokemonUI id={id} name={name}/>
           <div className='flex pt-4'>
             <PokemonButton id={(Number(id)-1).toString()} sKey='KeyZ'>
               &lt;</PokemonButton>
-            <SelectPokemon id={id} className='mx-2' sKey='KeyX' setRefresh={setRefresh}/>
+            <SelectPokemon id={id} className='mx-2' sKey='KeyX'/>
             <PokemonButton id={(Number(id)+1).toString()} sKey='KeyC'>
               &gt;</PokemonButton>
           </div>

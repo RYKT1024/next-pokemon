@@ -3,9 +3,15 @@
 import { useEffect, useState } from "react"
 import { TrainerDataType } from "@/lib/types"
 import { fetchTrainerData } from "@/lib/data";
+import { useGlobalContext } from "@/lib/context";
+import { useLocalShowPokemon } from "@/lib/local";
 
-export default function PokebagContent({config}: {config: any}) {
+export default function PokebagContent() {
   const [trainerInfo, setTrainerInfo] = useState<TrainerDataType | null>(null);
+  const context = useGlobalContext();
+  const refresh = context.globals.refresh;
+  const setRefresh = () => context.changeGlobals('refresh', !refresh);
+  const [localShowPokemon, setLocalShowPokemon] = useLocalShowPokemon();
 
   useEffect(() => {
     const tid = 1;
@@ -18,10 +24,10 @@ export default function PokebagContent({config}: {config: any}) {
     <div>
       {trainerInfo ? (
         <div>
-          <p>showPokemon:{(config.localShowPokemon).toString()}</p>
+          <p>showPokemon:{(localShowPokemon).toString()}</p>
           <button onClick={() => {
-            config.setLocalShowPokemon(!config.localShowPokemon);
-            location.reload();
+            setLocalShowPokemon(!localShowPokemon);
+            setRefresh();
           }}>change</button>
           <p>训练师信息:</p>
           <p>{JSON.stringify(trainerInfo)}</p>
